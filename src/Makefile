@@ -17,5 +17,6 @@ main.o: main.c
 	$(CC) $(CFLAGS) -o main.o main.c
 global.o: global.c global.h
 	$(CC) $(CFLAGS) -o global.o global.c
+
 clean:
 	rm -f $(PROG) $(OBJS)

@@ -33,19 +33,12 @@ node * searchNode(int id, char * arg, node * start){
 
 /*
  * Creates a new node with a uniqe id( uniqe in current list)
- * TODO add to h file
  */
-node * createNode(int msg_t, node * start){
-	static int _id;
-	node * N;
-	if(isEmpty(start))
-		_id = 1; //start/restart íd counter
-	else
-		(_id++);
+node * createNode(message_t msg){
+	node * N = (node *) malloc(sizeof(node));
 	//set values in struct
-	N->id = _id;
-	N->message_type = msg_t;
-	
+	N->msg = msg;
+	N->next = NULL;
 	return N;
 }
 
@@ -63,7 +56,6 @@ int setup(node * node, pthread_mutex_t * mutex){
  * Adds a new node to the queue.
  */
 int push(node * start, node * new_node){
-	//node * new_node = (node *) malloc(sizeof(node));
 	new_node->next = NULL;
 	node * current;
 	int ret = 0;

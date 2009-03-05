@@ -32,8 +32,10 @@ unsigned uint64_t globalId ( int cmd, int arg ) {
 			_id = arg;
 			break;
 		case 4:
+			break;
 			
 	}
+	return ret;
 }
 
 node * globalMSG ( int cmd, node * arg){

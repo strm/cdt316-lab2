@@ -8,6 +8,9 @@
 #ifndef SOUPS_H
 #define SOUPS_H
 
+#define VAR_LEN		(255)
+#define MSG_MAX_DATA	(8)
+
 typedef struct {
 	char variable[VAR_LEN];
 	int value;

@@ -3,17 +3,17 @@
 
 #include <pthread.h>
 #include <stdlib.h>
+#include "soups.h"
 
-	#define TRUE 1
-	#define FALSE 0
+#define TRUE 1
+#define FALSE 0
 	
-	#define SUCCESS 1
+#define SUCCESS 1
 
-	#define NO_ELEMENTS 0
+#define NO_ELEMENTS 0
+
 typedef struct _node {
-	int id; //node only id for next, search...
-	int message_type;
-	void * data;
+	message_t msg;
 	struct _node * next;
 } node;
 
@@ -25,5 +25,5 @@ int isEmpty(node * start);
 int setup(node * node, pthread_mutex_t * mutex);
 int push(node * start, node * new_node);
 node * pop (node * start);
-
+node * createNode(message_t msg);
 #endif
