@@ -11,6 +11,7 @@
  * TODO Add to h file
  */  
 node * getNext(int last, node * start){
+	return start;
 }
 
 /*
@@ -28,7 +29,7 @@ int isEmpty(node * start){
  * TODO add to h file  
  */
 node * searchNode(int id, char * arg, node * start){
-		
+	return start;	
 }
 
 /*

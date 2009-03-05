@@ -14,6 +14,9 @@
 void * buster (void * arg){
 	int n = (int) arg;
 	int p = 0;
+	data_t data;
+	message_t msg;
+	msg 
 	for (p = 0; p < n; p++){
 		push(p*p, NULL);
 		usleep(1);
@@ -51,7 +54,7 @@ void * rose (void * arg){
 int main(void){
 	pthread_t thread[2];
 	//node * temp;
-	if(!setup()){
+	if(globalMsg(MSG_SETUP, MSG_NO_ARG) == NULL){
 		pthread_create(&thread[0], NULL, rose, (void *) 0);
 		sleep(0);
 		pthread_create(&thread[1], NULL, buster, (void *) 10);
