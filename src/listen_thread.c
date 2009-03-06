@@ -9,6 +9,8 @@
 #include <netinet/in.h>
 #include <netdb.h>
 
+#define test 0
+
 typedef struct {
 	char variable[VAR_LEN];
 	int value;
