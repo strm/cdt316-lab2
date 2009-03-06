@@ -2,8 +2,6 @@
  *	Testing application for pthread communication.
  *	
  * */
-
-#include "com.h"
 #include "global.h"
 #include <stdio.h>
 #include <unistd.h>
@@ -14,14 +12,24 @@
 void * buster (void * arg){
 	int n = (int) arg;
 	int p = 0;
-	data_t data;
 	message_t msg;
-	msg 
+	node * nMsg;
+	char var[VAR_LEN];
+	char val[VALUE_LEN];
+
 	for (p = 0; p < n; p++){
-		push(p*p, NULL);
-		usleep(1);
+		strcat(var, "hej");
+		strcat(val, "hälsning");
+		msg = createMessage(var, val, 0, 1);
+		msg.msgType = 0;
+		msg.msgId = p;
+		nMsg = createNode(msg);
+		globalMSG(MSG_PUSH, nMsg);
+		usleep(1000);
 	}
-	push(-1, NULL);
+	msg = createMessage("Good bye", "Hej då", 1, 1);
+	msg.msgType = -1;
+	msg.msgId = (p++);
 	return (void *) 0;
 }
 /*
@@ -31,14 +39,14 @@ void * rose (void * arg){
 	node * temp;
 	int _while = 0;
 	do{
-		temp = pop();
+		temp = globalMSG(MSG_POP, MSG_NO_ARG);
 		if( temp == NULL ){
 	//<	printf("*");
 			_while = 1;
 		}
 		else {
-			printf("\nRose: %d \n", temp->message_type);
-			if(temp->message_type != -1)
+			printf("\nRose: %d \n", temp->msg.msgId);
+			if(temp->msg.msgType != -1)
 				_while = 1;
 			else
 				_while = 0;
@@ -54,7 +62,7 @@ void * rose (void * arg){
 int main(void){
 	pthread_t thread[2];
 	//node * temp;
-	if(globalMsg(MSG_SETUP, MSG_NO_ARG) == NULL){
+	if(globalMSG(MSG_SETUP, MSG_NO_ARG) == NULL){
 		pthread_create(&thread[0], NULL, rose, (void *) 0);
 		sleep(0);
 		pthread_create(&thread[1], NULL, buster, (void *) 10);

@@ -6,16 +6,15 @@
  */
 
 #include "global.h"
-#include "com.h"
-
+#include <stdint.h>
 pthread_mutex_t _msgMutex; //mutex for globalMSG
 
 /*
  * A global ID number used to order messages
  */
-unsigned uint64_t globalId ( int cmd, int arg ) {
-	static unsigned uint64_t _id = 0;
-	unsigned uint64_t ret;
+uint64_t globalId ( int cmd, int arg ) {
+	static uint64_t _id = 0;
+	uint64_t ret;
 	switch (cmd){
 		case ID_GET:
 			ret = (_id++);
