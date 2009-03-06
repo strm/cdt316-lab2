@@ -31,6 +31,38 @@ int isEmpty(node * start){
 node * searchNode(int id, char * arg, node * start){
 	return start;	
 }
+/*
+ * Creates a new message_t struct that can then be filled
+ */
+message_t newMsg(void){
+	message_t msg;
+	msg.msgType = -1;
+	msg.endOfMsg = 0;
+	msg.msgId = -1;
+	msg.sizeOfData = -1;
+
+	return msg;
+}
+
+/*
+ * Creates a new message_t struct and starts filling it up
+ * User needs to check returned message_t for sizeOfData = 7 if eof is FALSE
+ */
+message_t createMessage(char var[VAR_LEN], char value[VALUE_LEN], int cmd,int eof,){
+	static message_t msg = newMsg();
+	message_t ret;
+	
+	msg.data[(msg.sizeOfData++)].variable = strdup(var);
+	msg.data[msg.sizeOfData].value = strdup(value);
+	msg.data[msg.sizeOfData].cmd = cmd;
+	
+	ret = msg;
+	//reset cases
+	if ( msg.sizeOfData == 7 || eof = TRUE)
+		msg = newMsg();
+	return ret;
+}
+
 
 /*
  * Creates a new node with a uniqe id( uniqe in current list)

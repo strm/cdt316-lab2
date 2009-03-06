@@ -19,5 +19,9 @@
 #define MSG_SETUP	(2)
 #define MSG_POP		(3)
 #define MSG_PUSH	(4)
+#define MSG_CLEAN	(5)
 #define MSG_NO_ARG	(NULL)
+
+//functions 
+node * globalMsg ( int cmd, node * arg );
 #endif
