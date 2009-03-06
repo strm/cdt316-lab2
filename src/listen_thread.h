@@ -69,7 +69,7 @@ int AddConnection(connections_t *list, int sock);
 int RemoveConnection(connections_t *list, int sock);
 
 /* Initialize connection list to default values */
-int InitConnectionList(connections_t *list, int forceInit);
+int InitConnectionList(connections_t *list);
 
 /* Reallocate memory for a connection list to hold CONN_GROW_FACTOR more connections */
 int ResizeConnectionList(connections_t *list);

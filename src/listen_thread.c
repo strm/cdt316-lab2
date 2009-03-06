@@ -59,25 +59,19 @@ int RemoveConnection(connections_t *list, socketfd sock) {
 /*
 ** Name:	InitConnectionList
 ** Parameters:	list		- connectionlist to initialize
-**		forceInit	- If true, forces the function to reinitialize the
-**				  list even though it's already been initialized earlier
 ** Description:	Initializes an empty list to the default values for a connection list
 */
-int InitConnectionList(connections_t *list, int forceInit) {
-	static int init = 0;
+int InitConnectionList(connections_t *list) {
 	int i;
 	
-	// Only init if we have not done so earlier or the user wants to force it
-	if(!init || forceInit) {
-		init = 1;
-		list->nConnections = 0;
-		list->maxConnections = CONN_DEFAULT_LIMIT;
-		list->connection = (connection_t *)malloc(sizeof(connection_t) * CONN_DEFAULT_LIMIT);
-		for(i = 0; i < CONN_DEFAULT_LIMIT; i++) {
-			list->connection[i].socket = -1;
-			list->connection[i].connStatus = STATUS_DISCONNECTED;
-		}
+	list->nConnections = 0;
+	list->maxConnections = CONN_DEFAULT_LIMIT;
+	list->connection = (connection_t *)malloc(sizeof(connection_t) * CONN_DEFAULT_LIMIT);
+	for(i = 0; i < CONN_DEFAULT_LIMIT; i++) {
+		list->connection[i].socket = -1;
+		list->connection[i].connStatus = STATUS_DISCONNECTED;
 	}
+	
 	return 0;
 }
 
@@ -168,15 +162,25 @@ void HandleMessage(message_t *msg, socketfd from, fd_set *fdSet, connections_t *
 	}
 }
 
+
+/*
+Things needed by listening thread:
+connection_list from worker thread so they can process communication properly (inited by either one)
+mutex for the connections list to prevent problems
+queue from worker thread so messages can be passed between the threads (inited by worker thread)
+mutex for the queue to prevent problems
+*/
 void *ListeningThread(void *arg) {
 	fd_set masterFdSet, readFdSet; /* Used by select */
 	int i;
 	socketfd connectionSocket;
 	socketfd listenSocket = CreateSocket(PORT);
 	message_t msg;
-	connections_t list;
+	connections_t middlewareConnections;
+	connections_t clientConnections;
 	
-	InitConnectionList(&list, 0);
+	InitConnectionList(&middlewareConnections);
+	InitConnectionList(&clientConnections);
 	
 	if(listen(listenSocket, 1) < 0) {
 		perror("listen: ");
@@ -202,11 +206,11 @@ void *ListeningThread(void *arg) {
 						//TODO: Add error handling here
 					}
 					FD_SET(connectionSocket, &masterFdSet);
-					AddConnection(&list, connectionSocket);
+					AddConnection(&middlewareConnections, connectionSocket);
 				}
 				else {
 					if(ReadMessage(i, &msg)) {
-						HandleMessage(&msg, i, &masterFdSet, &list);
+						HandleMessage(&msg, i, &masterFdSet, &middlewareConnections);
 					}
 					else {
 						/* TODO: Add error handling */
