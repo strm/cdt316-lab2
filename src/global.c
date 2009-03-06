@@ -37,9 +37,19 @@ unsigned uint64_t globalId ( int cmd, int arg ) {
 	}
 	return ret;
 }
-
+/*
+ * Wrapper for a global message queue.
+ * Arguemnts: Command to execute, Argument to that command.
+ * int cmd: MSG_GET, MSG_SETUP, MSG_POP, MSG_PUSH
+ * node * arg: node * node or MSG_NO_ARG
+ * MSG_GET: Returns a pointer to the queue
+ * MSG_SETUP: Sets up mutex and start node (must be called first and never again)
+ * MSG_PUSH/POP: Normal push pop behavior.
+ * MSG_CLEAN: Cleans the queue(exterminate!)
+ */
 node * globalMSG ( int cmd, node * arg){
 	static node * _msg;
+	static int _setup = FALSE;
 	node * ret;
 	//lock mutex
 	if( cmd != MSG_SETUP )	
@@ -49,8 +59,11 @@ node * globalMSG ( int cmd, node * arg){
 			ret = _msg;
 			break;
 		case MSG_SETUP:
-			setup(_msg, &_msgMutex);
-			ret = MSG_NO_ARG;
+			if(!_setup){
+				setup(_msg, &_msgMutex);
+				ret = MSG_NO_ARG;
+				_setup = TRUE;
+			}
 			break;
 		case MSG_POP:
 			ret = pop(_msg);
@@ -61,7 +74,11 @@ node * globalMSG ( int cmd, node * arg){
 			else
 				ret = MSG_NO_ARG;
 			break;
-			
+		case MSG_CLEAN:
+			while(pop(_msg) != NULL );
+			_setup = FALSE;
+			ret = MSG_NO_ARG;
+			break;
 	}
 	//unlock
 	pthread_mutex_unlock(&_msgMutex);
