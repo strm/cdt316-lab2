@@ -12,24 +12,20 @@
 void * buster (void * arg){
 	int n = (int) arg;
 	int p = 0;
-	message_t msg;
+	message_t * msg;
 	node * nMsg;
-	char var[VAR_LEN];
-	char val[VALUE_LEN];
-
 	for (p = 0; p < n; p++){
-		strcat(var, "hej");
-		strcat(val, "hälsning");
-		msg = createMessage(var, val, 0, 1);
-		msg.msgType = 0;
-		msg.msgId = p;
+		msg = createMessage("hej", "hälsning", 0, 1);
+		if(p == n-1)
+			msg->msgType = -1;
+		else
+			msg->msgType = p;
+		printf("%s\n", msg->data[0].variable);
+		msg->msgId = p;
 		nMsg = createNode(msg);
-		globalMSG(MSG_PUSH, nMsg);
-		usleep(1000);
+		globalMsg(MSG_PUSH, nMsg);
+		usleep(1);
 	}
-	msg = createMessage("Good bye", "Hej då", 1, 1);
-	msg.msgType = -1;
-	msg.msgId = (p++);
 	return (void *) 0;
 }
 /*
@@ -39,13 +35,13 @@ void * rose (void * arg){
 	node * temp;
 	int _while = 0;
 	do{
-		temp = globalMSG(MSG_POP, MSG_NO_ARG);
+		temp = (node *)globalMsg(MSG_POP, NULL);
 		if( temp == NULL ){
 	//<	printf("*");
 			_while = 1;
 		}
 		else {
-			printf("\nRose: %d \n", temp->msg.msgId);
+		printf("\nRose: %d %s \n", temp->msg.msgType, temp->msg.data[temp->msg.sizeOfData].variable);
 			if(temp->msg.msgType != -1)
 				_while = 1;
 			else
@@ -61,10 +57,9 @@ void * rose (void * arg){
  */
 int main(void){
 	pthread_t thread[2];
-	//node * temp;
-	if(globalMSG(MSG_SETUP, MSG_NO_ARG) == NULL){
+	message_t msg;
+	if(globalMsg(MSG_SETUP, MSG_NO_ARG) == NULL){
 		pthread_create(&thread[0], NULL, rose, (void *) 0);
-		sleep(0);
 		pthread_create(&thread[1], NULL, buster, (void *) 10);
 		pthread_join(thread[1], NULL);
 		pthread_join(thread[0], NULL);

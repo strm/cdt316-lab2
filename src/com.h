@@ -21,10 +21,10 @@ typedef struct _node {
 /*
  * Function list
  */
-int isEmpty(node * start);
-int setup(node * node, pthread_mutex_t * mutex);
-int push(node * start, node * new_node);
-node * pop (node * start);
-node * createNode(message_t msg);
-message_t createMessage(char var[VAR_LEN], char value[VALUE_LEN], int cmd, int eof);
+int isEmpty(node ** start);
+int setup(node ** node, pthread_mutex_t * mutex);
+int push(node ** start, node * new_node);
+node * pop (node ** start);
+node * createNode(message_t * msg);
+message_t * createMessage(char var[VAR_LEN], char value[VALUE_LEN], int cmd, int eof);
 #endif

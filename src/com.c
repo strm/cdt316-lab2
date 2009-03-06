@@ -2,7 +2,7 @@
  * 	Functions for communctions between pthreads
  *
  */
-
+#include <stdio.h>
 #include "com.h"
 
 /*
@@ -17,8 +17,8 @@ node * getNext(int last, node * start){
 /*
  * Check if node is empty
  */
-int isEmpty(node * start){
-	if(start == NULL)
+int isEmpty(node ** start){
+	if((*start) == NULL)
 		return 1;
 	else
 		return 0;
@@ -48,18 +48,17 @@ message_t newMsg(void){
  * Creates a new message_t struct and starts filling it up
  * User needs to check returned message_t for sizeOfData = 7 if eof is FALSE
  */
-message_t createMessage(char var[VAR_LEN], char value[VALUE_LEN], int cmd,int eof){
+message_t * createMessage(char var[VAR_LEN], char value[VALUE_LEN], int cmd,int eof){
 	static message_t msg;
-	message_t ret;
+	message_t * ret = (message_t *) malloc(sizeof(message_t));
 	
 	if(msg.msgType != -1) 
 		msg = newMsg();
-	
-	strcpy(msg.data[(msg.sizeOfData++)].variable, var);
+	msg.sizeOfData++;
+	strncpy(msg.data[(msg.sizeOfData)].variable, var, VAR_LEN-1);
 	strcpy(msg.data[msg.sizeOfData].value, value);
 	msg.data[msg.sizeOfData].cmd = cmd;
-	
-	ret = msg;
+	*ret = msg;
 	//reset cases
 	if ( msg.sizeOfData == 7 || eof == TRUE)
 		msg = newMsg();
@@ -70,10 +69,10 @@ message_t createMessage(char var[VAR_LEN], char value[VALUE_LEN], int cmd,int eo
 /*
  * Creates a new node with a uniqe id( uniqe in current list)
  */
-node * createNode(message_t msg){
+node * createNode(message_t * msg){
 	node * N = (node *) malloc(sizeof(node));
 	//set values in struct
-	N->msg = msg;
+	N->msg = *msg;
 	N->next = NULL;
 	return N;
 }
@@ -81,9 +80,9 @@ node * createNode(message_t msg){
 /*
  * Setup?
  */
-int setup(node * node, pthread_mutex_t * mutex){
+int setup(node ** node, pthread_mutex_t * mutex){
 	pthread_mutex_init(mutex, NULL);
-	node = NULL;
+	(*node) = NULL;
 	
 	return 0;
 }
@@ -91,18 +90,18 @@ int setup(node * node, pthread_mutex_t * mutex){
 /*
  * Adds a new node to the queue.
  */
-int push(node * start, node * new_node){
-	new_node->next = NULL;
+int push(node ** start, node * new_node){
 	node * current;
 	int ret = 0;
+	new_node->next = NULL;
 	//first node
-	if(isEmpty(start)){
-		start = new_node;
+	if((*start) == NULL){
+		(*start) = new_node;
 		ret = SUCCESS;
 	}
 	//last node
 	else{
-		current = start;
+		current = (*start);
 		while(current->next != NULL)
 			current = current->next;
 		current->next = new_node;
@@ -114,17 +113,17 @@ int push(node * start, node * new_node){
 /*
  * Removes the first element in the queue.
  */
-node * pop(node * start){
+node * pop(node ** start){
 	node * temp;
 	if(isEmpty(start))
 		temp = NULL;
-	else if(start->next == NULL){
-		temp = start;
-		start = NULL;
+	else if((*start)->next == NULL){
+		temp = (*start);
+		(*start) = NULL;
 	}
 	else{
-		temp = start;
-		start = start->next;
+		temp = (*start);
+		(*start) = (*start)->next;
 	}
 	return temp;
 }

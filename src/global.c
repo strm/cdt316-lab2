@@ -59,22 +59,22 @@ node * globalMsg ( int cmd, node * arg){
 			break;
 		case MSG_SETUP:
 			if(!_setup){
-				setup(_msg, &_msgMutex);
+				setup(&_msg, &_msgMutex);
 				ret = MSG_NO_ARG;
 				_setup = TRUE;
 			}
 			break;
 		case MSG_POP:
-			ret = pop(_msg);
+			ret = pop(&_msg);
 			break;
 		case MSG_PUSH:
-			if (push(_msg, arg))
+			if (push(&_msg, arg))
 				ret = arg;
 			else
 				ret = MSG_NO_ARG;
 			break;
 		case MSG_CLEAN:
-			while(pop(_msg) != NULL );
+			while(pop(&_msg) != NULL );
 			_setup = FALSE;
 			ret = MSG_NO_ARG;
 			break;
