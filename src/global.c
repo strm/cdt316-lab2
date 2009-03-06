@@ -46,7 +46,7 @@ uint64_t globalId ( int cmd, int arg ) {
  * MSG_PUSH/POP: Normal push pop behavior.
  * MSG_CLEAN: Cleans the queue(exterminate!)
  */
-node * globalMSG ( int cmd, node * arg){
+node * globalMsg ( int cmd, node * arg){
 	static node * _msg;
 	static int _setup = FALSE;
 	node * ret;
