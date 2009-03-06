@@ -26,6 +26,8 @@
 #define STATUS_DISCONNECTED	(0)
 #define STATUS_CONNECTED	(1)
 #define STATUS_PENDING_ACK	(2)
+#define STATUS_ACKED		(3)
+#define STATUS_NONE		(4)
 
 #ifndef TRUE
 #define TRUE 1
@@ -67,7 +69,7 @@ int AddConnection(connections_t *list, int sock);
 int RemoveConnection(connections_t *list, int sock);
 
 /* Initialize connection list to default values */
-int InitConnectionList(connections_t *list, int forceInit);
+int InitConnectionList(connections_t *list);
 
 /* Reallocate memory for a connection list to hold CONN_GROW_FACTOR more connections */
 int ResizeConnectionList(connections_t *list);
@@ -76,7 +78,7 @@ int CreateSocket(unsigned short int port);
 
 int ReadMessage(int sock, message_t *buf);
 
-void HandleMessage(message_t *msg, socketfd from, fd_set *fdSet);
+void HandleMessage(message_t *msg, socketfd from, fd_set *fdSet, connections_t *list);
 
 void *ListeningThread(void *arg);
 
