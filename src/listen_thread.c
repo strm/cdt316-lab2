@@ -9,16 +9,20 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include "listen_thread.h"
+#include <time.h>
 
-connections_t list;
-
-/* Adds a connection to the first available position */
+/*
+** Name:	AddConnection
+** Parameters:	list - connectionlist to add the connection to
+**		sock - the socket that is used for communication
+** Description:	Adds a new connection to a connection list. It sets the attributes
+**		of the new connection to default values for connected sockets
+*/
 int AddConnection(connections_t *list, socketfd sock) {
 	int i;
 	
 	for(i = 0; i < list->maxConnections; i++) {
 		if(list->connection[i].connStatus == STATUS_DISCONNECTED) {
-			printf("Adding socket from connection list\n");
 			list->connection[i].connStatus = STATUS_CONNECTED;
 			list->connection[i].socket = sock;
 			list->nConnections++;
@@ -32,7 +36,13 @@ int AddConnection(connections_t *list, socketfd sock) {
 	return 0;
 }
 
-/* Sets a connection to DISCONNECTED status */
+/*
+** Name:	RemoveConnection
+** Parameters:	list - connectionlist to remove the connection from
+**		sock - the socket that is used for communication
+** Description:	Removes an existing connection from a connection list. The attributes
+**		for the entry is set to STATUS_DISCONNECTED
+*/
 int RemoveConnection(connections_t *list, socketfd sock) {
 	int i;
 	
@@ -46,26 +56,46 @@ int RemoveConnection(connections_t *list, socketfd sock) {
 	return 0;
 }
 
-/* Initialize connection list to default values */
+/*
+** Name:	InitConnectionList
+** Parameters:	list		- connectionlist to initialize
+**		forceInit	- If true, forces the function to reinitialize the
+**				  list even though it's already been initialized earlier
+** Description:	Initializes an empty list to the default values for a connection list
+*/
 int InitConnectionList(connections_t *list, int forceInit) {
 	static int init = 0;
 	int i;
 	
+	// Only init if we have not done so earlier or the user wants to force it
 	if(!init || forceInit) {
 		init = 1;
 		list->nConnections = 0;
 		list->maxConnections = CONN_DEFAULT_LIMIT;
 		list->connection = (connection_t *)malloc(sizeof(connection_t) * CONN_DEFAULT_LIMIT);
-		for(i = 0; i < CONN_DEFAULT_LIMIT; i++)
+		for(i = 0; i < CONN_DEFAULT_LIMIT; i++) {
 			list->connection[i].socket = -1;
+			list->connection[i].connStatus = STATUS_DISCONNECTED;
+		}
 	}
 	return 0;
 }
 
-/* Reallocate memory for a connection list to hold CONN_GROW_FACTOR more connections */
+/*
+** Name:	ResizeConnectionList
+** Parameters:	list		- connectionlist to resize
+** Description:	Increases the size of a connectionlist with CONN_GROW_FACTOR elements.
+**		The attributes of the new elements are set to default values.
+*/
 int ResizeConnectionList(connections_t *list) {
+	int oldMax = list->maxConnections;
 	list->maxConnections += CONN_GROW_FACTOR;
 	list->connection = realloc(list->connection, sizeof(connection_t) * list->maxConnections);
+	while(oldMax < list->maxConnections) {
+		list->connection[oldMax].connStatus = STATUS_DISCONNECTED;
+		list->connection[oldMax].socket =  -1;
+		oldMax++;
+	}
 	return 0;
 }
 
@@ -92,36 +122,48 @@ int ReadMessage(socketfd sock, message_t *buf) {
 	return nBytes;
 }
 
-void HandleMessage(message_t *msg, socketfd from, fd_set *fdSet) {
+void HandleMessage(message_t *msg, socketfd from, fd_set *fdSet, connections_t *list) {
+	int i, count;
+	
 	switch(msg->msgType) {
 		case TRANSACTION:
 			/* TODO: Incoming transaction should be forwarded to worker thread through queue */
 			break;
 		case SYNCHRONIZE:
-			/* TODO: if incoming request, flag worker thread to send transaction list, otherwise sync with incoming list */
+			/* TODO: send to worker thread for processing */
 			break;
 		case CONNECT:
 			/* TODO: Obsolete */
 			break;
 		case COMMIT:
-			/* TODO: Handle a commit request */
+			/* TODO: send to worker thread for processing */
 			break;
 		case DISCONNECT:
 			/* TODO: Add mutex to lock the connection list so no bad things might happen */
-			printf("Received a DISCONNECT request\n");
-			printf("%d/%d connections\n", list.nConnections, list.maxConnections);
-			RemoveConnection(&list, from);
+			RemoveConnection(list, from);
 			if(fdSet != NULL)
 				FD_CLR(from, fdSet);
 			close(from);
 			break;
 		case ACK:
-			printf("Received ACK message\n");
-			printf("%d/%d connections\n", list.nConnections, list.maxConnections);
 			/* TODO: Wait for all connections to ACK, then flag worker thread to commit */
+			// Keep track of which middlewares that have sent an ACK, and count number of ACK's received
+			for(i = 0, count = 0; i < list->maxConnections; i++) {
+				if(list->connection[i].socket == from) {
+					list->connection[i].transStatus = STATUS_ACKED;
+				}
+				if(list->connection[i].transStatus == STATUS_ACKED) {
+					count++;
+				}
+			}
+			
+			// If all other middlewares has sent an ACK it is time to commit changes
+			if(count == list->nConnections) {
+				/* TODO: Flag worker thread to commit changes and send commit to all connected middlewares */
+			}
 			break;
 		case NAK:
-			/* TODO: DO STUFF!!! Depends on situation, still on a TODO TODO list */
+			/* TODO: Forward to worker thread for rollback */
 			break;
 	}
 }
@@ -132,6 +174,7 @@ void *ListeningThread(void *arg) {
 	socketfd connectionSocket;
 	socketfd listenSocket = CreateSocket(PORT);
 	message_t msg;
+	connections_t list;
 	
 	InitConnectionList(&list, 0);
 	
@@ -160,17 +203,14 @@ void *ListeningThread(void *arg) {
 					}
 					FD_SET(connectionSocket, &masterFdSet);
 					AddConnection(&list, connectionSocket);
-					fprintf(stdout, "New connection established to unknown thingy\n");
 				}
 				else {
 					if(ReadMessage(i, &msg)) {
-						HandleMessage(&msg, i, &masterFdSet);
-						printf("Read a message successfully\n");
+						HandleMessage(&msg, i, &masterFdSet, &list);
 					}
 					else {
-						printf("Read a message UNsuccessfully\n");
+						/* TODO: Add error handling */
 					}
-					//TODO: Some request from connected middleware... DANGER!!!!
 				}
 			}
 		}
@@ -195,6 +235,7 @@ void initSocketAddress(struct sockaddr_in *name, char *hostName, unsigned short 
 }
 
 void *ComThread(void *arg) {
+	int i;
 	message_t msg;
 	socketfd sock;
 	struct sockaddr_in hostInfo;
@@ -212,30 +253,45 @@ void *ComThread(void *arg) {
 		}
 	}
 
-	while(1) {
+	for(i = rand()%50; i >= 0; i--) {
 		msg.msgType = ACK;
 		send(sock, (void *)&msg, sizeof(msg), 0);
 		sleep(2);
 	}
+	msg.msgType = DISCONNECT;
+	send(sock, (void *)&msg, sizeof(msg), 0);
+	return (void*)0;
 }
 
 int main(int argc, char *argv[]) {
-	pthread_t listenThread, comThread[18];
+	pthread_t listenThread, comThread[200];
 	message_t msg;
 	socketfd sock;
 	struct sockaddr_in hostInfo;
 	int i;
 	
+	srand(time(NULL));
 	pthread_create(&listenThread, NULL, ListeningThread, (void *)NULL);
 	sock = socket(PF_INET, SOCK_STREAM, 0);
 	initSocketAddress(&hostInfo, "localhost", 12345);
 	sleep(5);
 	
-	for(i = 0; i < 18; i++) {
+	if(connect(sock, (struct sockaddr *)&hostInfo, sizeof(hostInfo)) < 0) {
+		perror("Could not connect to server\n");
+		exit(EXIT_FAILURE);
+	}
+	
+	for(i = 0; i < 200; i++) {
 		pthread_create(&(comThread[i]), NULL, ComThread, (void *)NULL);
+		if(i == 8) {
+			sleep(2);
+			msg.msgType = DISCONNECT;
+			send(sock, (void *)&msg, sizeof(msg), 0);
+		}
 		sleep(2);
 	}
 	
+	sock = socket(PF_INET, SOCK_STREAM, 0);
 	if(connect(sock, (struct sockaddr *)&hostInfo, sizeof(hostInfo)) < 0) {
 		perror("Could not connect to server\n");
 		exit(EXIT_FAILURE);
