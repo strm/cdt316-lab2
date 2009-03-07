@@ -8,10 +8,23 @@
 /*
  * Gets the next element in list.
  * Returns the node or null (check for null!!!)
- * TODO Add to h file
+ * TODO DO WE NEED THIS??`????????
  */  
 node * getNext(int last, node * start){
-	return start;
+	node * ret;
+	node * current;
+	if(isEmpty(start))
+		ret = NULL
+	else{
+		current = start->next;
+		while (current != NULL){
+			if(current->id == (last+1))
+				break;
+			current = current->next;
+		}
+		ret = current;
+	}
+	return ret;
 }
 
 /*
@@ -19,17 +32,42 @@ node * getNext(int last, node * start){
  */
 int isEmpty(node ** start){
 	if((*start) == NULL)
-		return 1;
+		return TRUE;
 	else
-		return 0;
+		return FALSE;
 }
 
 /*
- * Finds a node by id or arg
- * TODO add to h file  
+ * Finds a node by id or ar
+ * Returns the first! match
+ * If id isnt used set to NO_ARG (0)
  */
-node * searchNode(int id, char * arg, node * start){
-	return start;	
+node * searchNode(int id, char arg[VAR_LEN], node * start){
+	int n;
+	node * current, ret;
+	if(isEmpty(start))
+		return NULL;
+	else{
+		current = start->next;
+		while (current != NULL){
+			for(n = 0; n < current->msg.sizeOfData; n++){
+				if(id == NO_ARG){
+					if(strcmp(current->data[n].variable, arg){
+						ret = current;
+						break;
+					}
+				}
+				else
+					if(current->msgId == id){
+						ret = current;
+						break;
+					}
+			}
+			current = current->next;
+		}
+		ret = current; //works?
+		return ret; 
+	}
 }
 /*
  * Creates a new message_t struct that can then be filled
@@ -70,9 +108,11 @@ message_t * createMessage(char var[VAR_LEN], char value[VALUE_LEN], int cmd,int 
  * Creates a new node with a uniqe id( uniqe in current list)
  */
 node * createNode(message_t * msg){
+	static int _id = 0;
 	node * N = (node *) malloc(sizeof(node));
 	//set values in struct
 	N->msg = *msg;
+	N->id = (_id++);
 	N->next = NULL;
 	return N;
 }
