@@ -22,4 +22,4 @@ com.o: com.c com.h
 lock.o: lock.c lock.h
 	$(CC) $(CFLAGS) -o lock.o lock.c
 clean:
-	rm -f $(PROG) $(OBJS)
+	rm -f $(PROG) $(OBJS) lock.o

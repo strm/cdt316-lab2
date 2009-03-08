@@ -3,6 +3,8 @@
  * Authors: Niklas Pettersson, Lars Cederholm
  * Date: 08/03/09
  */
+#ifndef LOCK_H
+#define LOCK_H
 
 #include "soups.h"
 #include <string.h>
@@ -23,3 +25,4 @@ int placeLock(char var[VAR_LEN], int id);
 int removeLock(char var[VAR_LEN]);
 int removeAll(int id);
 
+#endif
