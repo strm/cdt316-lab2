@@ -19,5 +19,7 @@ global.o: global.c
 
 com.o: com.c com.h
 	$(CC) $(CFLAGS) -o com.o com.c
+lock.o: lock.c lock.h
+	$(CC) $(CFLAGS) -o lock.o lock.c
 clean:
 	rm -f $(PROG) $(OBJS)

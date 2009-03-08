@@ -13,8 +13,8 @@
 node * getNext(int last, node * start){
 	node * ret;
 	node * current;
-	if(isEmpty(start))
-		ret = NULL
+	if(isEmpty(&start))
+		ret = NULL;
 	else{
 		current = start->next;
 		while (current != NULL){
@@ -38,27 +38,29 @@ int isEmpty(node ** start){
 }
 
 /*
+ * TODO NEEDED?
  * Finds a node by id or ar
  * Returns the first! match
  * If id isnt used set to NO_ARG (0)
  */
 node * searchNode(int id, char arg[VAR_LEN], node * start){
 	int n;
-	node * current, ret;
-	if(isEmpty(start))
+	node * current;
+	node * ret;
+	if(isEmpty(&start))
 		return NULL;
 	else{
 		current = start->next;
 		while (current != NULL){
 			for(n = 0; n < current->msg.sizeOfData; n++){
 				if(id == NO_ARG){
-					if(strcmp(current->data[n].variable, arg){
+					if(strcmp(current->msg.data[n].variable, arg) == 0){
 						ret = current;
 						break;
 					}
 				}
 				else
-					if(current->msgId == id){
+					if(current->msg.msgId == id){
 						ret = current;
 						break;
 					}

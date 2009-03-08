@@ -57,7 +57,6 @@ void * rose (void * arg){
  */
 int main(void){
 	pthread_t thread[2];
-	message_t msg;
 	if(globalMsg(MSG_SETUP, MSG_NO_ARG) == NULL){
 		pthread_create(&thread[0], NULL, rose, (void *) 0);
 		pthread_create(&thread[1], NULL, buster, (void *) 10);
