@@ -1,0 +1,17 @@
+TODO LIST
+	COM
+		Check some functions if they are going to be used.
+	GLOBAL
+		Test and Finish ID function.
+	LOCK
+		Test
+	LOG
+		Not started, Needs TRANS
+	TRANS
+		Not started
+	PARSER
+		Not started, Needs TRANS
+	LISTEN
+		Unknown
+	THREAD
+		Used?
