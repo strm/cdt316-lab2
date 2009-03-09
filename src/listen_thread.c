@@ -126,11 +126,11 @@ void HandleMessage(message_t *msg, socketfd from, fd_set *fdSet, connections_t *
 		case SYNCHRONIZE:
 			/* TODO: send to worker thread for processing */
 			break;
-		case CONNECT:
-			/* TODO: Obsolete */
-			break;
 		case COMMIT:
 			/* TODO: send to worker thread for processing */
+			break;
+		case CONNECT:
+			/* TODO: this is a reply from middleware we connected to, contains information about sequence number etc. */
 			break;
 		case DISCONNECT:
 			/* TODO: Add mutex to lock the connection list so no bad things might happen */
@@ -161,7 +161,6 @@ void HandleMessage(message_t *msg, socketfd from, fd_set *fdSet, connections_t *
 			break;
 	}
 }
-
 
 /*
 Things needed by listening thread:
