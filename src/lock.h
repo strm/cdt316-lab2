@@ -24,5 +24,5 @@ int checkLock(char var[VAR_LEN]);
 int placeLock(char var[VAR_LEN], int id);
 int removeLock(char var[VAR_LEN]);
 int removeAll(int id);
-
+int noLock(void);
 #endif

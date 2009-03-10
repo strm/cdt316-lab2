@@ -6,28 +6,6 @@
 #include "msg_queue.h"
 
 /*
- * Gets the next element in list.
- * Returns the node or null (check for null!!!)
- * TODO DO WE NEED THIS??`????????
- */  
-node * getNext(int last, node * start){
-	node * ret;
-	node * current;
-	if(isEmpty(&start))
-		ret = NULL;
-	else{
-		current = start->next;
-		while (current != NULL){
-			if(current->id == (last+1))
-				break;
-			current = current->next;
-		}
-		ret = current;
-	}
-	return ret;
-}
-
-/*
  * Check if node is empty
  */
 int isEmpty(node ** start){
@@ -37,40 +15,6 @@ int isEmpty(node ** start){
 		return FALSE;
 }
 
-/*
- * TODO NEEDED?
- * Finds a node by id or ar
- * Returns the first! match
- * If id isnt used set to NO_ARG (0)
- */
-node * searchNode(int id, char arg[VAR_LEN], node * start){
-	int n;
-	node * current;
-	node * ret;
-	if(isEmpty(&start))
-		return NULL;
-	else{
-		current = start->next;
-		while (current != NULL){
-			for(n = 0; n < current->msg.sizeOfData; n++){
-				if(id == NO_ARG){
-					if(strcmp(current->msg.data[n].variable, arg) == 0){
-						ret = current;
-						break;
-					}
-				}
-				else
-					if(current->msg.msgId == id){
-						ret = current;
-						break;
-					}
-			}
-			current = current->next;
-		}
-		ret = current; //works?
-		return ret; 
-	}
-}
 /*
  * Creates a new message_t struct that can then be filled
  */

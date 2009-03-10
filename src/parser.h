@@ -7,4 +7,12 @@
 #ifndef PARSER_H
 #define PARSER_H
 
+#include "trans.h"
+
+int getVars(void);
+int getValues(void);
+
+
+varList * fileToVarList(int fp);
+
 #endif

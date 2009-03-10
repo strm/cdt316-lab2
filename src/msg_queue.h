@@ -30,6 +30,4 @@ int push(node ** start, node * new_node);
 node * pop (node ** start);
 node * createNode(message_t * msg);
 message_t * createMessage(char var[VAR_LEN], char value[VALUE_LEN], int cmd, int eof);
-node * getNext(int last, node * start);
-node * searchNode(int id, char arg[VAR_LEN], node * start);
 #endif

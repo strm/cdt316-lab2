@@ -54,6 +54,8 @@ int lockPop(char var[VAR_LEN], int id){
 			//prev = temp;
 			if(temp->id == id || strcmp(temp->var, var) == 0){
 				//match found remove node from list
+				if(prev == lockList)
+					lockList = temp->next;
 				prev->next = temp->next;
 				free(temp);
 				return TRUE;

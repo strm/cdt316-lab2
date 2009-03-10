@@ -4,6 +4,7 @@
  * */
 #include "global.h"
 #include "lock.h"
+#include "trans.h"
 #include <stdio.h>
 #include <unistd.h>
 #include <pthread.h>
@@ -57,6 +58,11 @@ void * rose (void * arg){
  * sets up 2 threads and uses communction between them.
  */
 int main(void){
+	varList * vList = NULL;
+	data_t dt;
+	data_t tmp;
+	dt.cmd = 0;
+	transNode * tList = NULL;
 	pthread_t thread[2];
 	if(globalMsg(MSG_SETUP, MSG_NO_ARG) == NULL){
 		pthread_create(&thread[0], NULL, rose, (void *) 0);
@@ -73,11 +79,53 @@ int main(void){
 	placeLock("girth", 1);
 	printf("lock hej? %d\n", placeLock("hej", 1));
 	printf("is locked ? %d\n", checkLock("hej"));
-	removeLock("hej");
+	removeLock("girth");
+		removeLock("hej");
 	printf("%d\n",removeLock("hej"));
 	printf("is locked ? %d\n", checkLock("hej"));
 	printf("remove all %d\n", removeAll(1));
-	printf("empty? %d\n", checkLock("morgon"));
+	removeLock("morgon");
+	removeLock("girth");
+	
+	printf("hej: %d\n", checkLock("hej"));
+	printf("morgon: %d\n", checkLock("morgon"));
+	printf("girth: %d\n", checkLock("girth"));
+	printf("remove all %d\n", removeAll(1));
+	printf("no locks? %d\n",noLock());
+
+ 	/**
+	 * Testing of trans
+	 */
+	dt.cmd++;
+	printf("varListPust = %d\n", varListPush(dt, &vList));
+	dt.cmd++;
+	printf("varListPust = %d\n", varListPush(dt, &vList));
+	dt.cmd++;
+	printf("varListPust = %d\n", varListPush(dt, &vList));
+	dt.cmd++;
+	printf("varListPust = %d\n", varListPush(dt, &vList));
+	printf("varList = {");
+	do{
+		tmp = varListPop(&vList);
+		printf("%d,", tmp.cmd);
+	} while( tmp.cmd != NO_ARG );
+	printf("}\n");
+
+	/*
+ 	 * testing trans
+ 	 */ 
+	printf("trans: %d\n",addTransaction(&tList, createTransaction(1)));
+	printf("trans: %d\n",addTransaction(&tList, createTransaction(2)));
+	printf("trans: %d\n",addTransaction(&tList, createTransaction(3)));
+	
+	printf("rm trans: %d\n", removeTransaction(&tList, 4));
+	printf("rm trans: %d\n", removeTransaction(&tList, 2));
+	printf("rm trans: %d\n", removeTransaction(&tList, 2));
+	printf("rm trans: %d\n", removeTransaction(&tList, 1));
+	
+	printf("rm trans: %d\n", removeTransaction(&tList, 1));
+	
+	
 	return 0;
 	
 }
