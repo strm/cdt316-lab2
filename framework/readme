@@ -1,0 +1,67 @@
+The assignment requires a nameserver to be running. The system 
+can be configured both as stand-alone or as networked. 
+
+If you are runnig a networked version (that will use a central namserver 
+running on the IDt's webserver), you don't need to do anything,
+because the system is already configured so as default (in other words, 
+you can stop reading this file now).
+
+--------------------------------------------------------------------------
+
+Otherwise, if you wish to run the stand-alone version you'll need to 
+reconfigure the system. If configured as stand-alone, you must 
+start a nameserver on a local machine that you're working on. 
+Besides, only one person can run the system on a given machine 
+at the time.
+
+Do the following to configure as stand-alone:
+
+1. set NAMESERVER in nameserver.h to a machine that will run your
+   local nameserver (e.g lab6-4.idt.mdh.se). (The computer name is
+   either found on a tag on the computer case or can be retrieved
+   by using the command 'uname -a'.)
+
+2. run 'make clean'
+
+3. run 'make'
+
+
+Now when you're done with reconfiguring your system, you can try 
+it out by doing the following:  
+
+1. decide which database instance will be your local
+   nameserver (e.g. DATABASE2)
+
+2. start your nameserver by typing: 'dbserver nameserver DATABASE2 &'
+
+3. start one database instance e.g: 'dbserver DATABASE1 &'
+
+4. start the midleware: 'middle &'
+
+5. run 'frontend 1 test.op'
+
+You should get the result: 
+10
+20
+and the middleware process should terminate automaticaly
+
+
+Now you can try out that your nameserver works even if you log in 
+to a different machine. Do the following:
+
+1. log in to a differen machine, e.g. 'rlogin lab6-5.idt.mdh.se'
+   (or use 'ssh lab6-5.idt.mdh.se' if rlogin doesn't work)
+
+2. run annother middleware instance 'middle &' 
+   (note that even this instance will connect to your DATABASE1 
+   that you started on the first machine, because it's hardcoded in 
+   middle.c to connect to DATABASE1)
+
+3. run 'frontend 1 test.op'
+
+Even this shoud work.
+
+Contact damir.isovic@mdh.se if you have any questions about this document.
+
+
+

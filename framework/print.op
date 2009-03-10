@@ -1,0 +1,3 @@
+ASSIGN FOO 4711
+print FOO
+print 12

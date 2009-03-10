@@ -1,0 +1,9 @@
+IGNORE
+DELETE foo
+ASSIGN foo 10
+assign bar 20
+add bar bar -10
+ADD foo foo 10
+PRINT foo
+print bar
+QUIT
