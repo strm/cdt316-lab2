@@ -1,7 +1,7 @@
 #make file for pthread communcation testing
 
 PROG 	= app.out
-OBJS	= com.o global.o main.o
+OBJS	= msg_queue.o global.o main.o lock.o
 CC 	= gcc
 LD 	= gcc
 CFLAGS 	= -c -Wall
@@ -11,15 +11,15 @@ all: $(PROG)
 $(PROG) : $(OBJS) 
 	$(LD) -lpthread -o $(PROG) $(OBJS)
 
-main.o: main.c com.o global.o
+main.o: main.c 
 	$(CC) $(CFLAGS) -o main.o main.c
 
 global.o: global.c
 	$(CC) $(CFLAGS) -o global.o global.c
 
-com.o: com.c com.h
-	$(CC) $(CFLAGS) -o com.o com.c
+msg_queue.o: msg_queue.c
+	$(CC) $(CFLAGS) -o msg_queue.o msg_queue.c
 lock.o: lock.c lock.h
 	$(CC) $(CFLAGS) -o lock.o lock.c
 clean:
-	rm -f $(PROG) $(OBJS) lock.o
+	rm -f $(PROG) $(OBJS) *~

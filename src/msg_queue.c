@@ -3,7 +3,7 @@
  *
  */
 #include <stdio.h>
-#include "com.h"
+#include "msg_queue.h"
 
 /*
  * Gets the next element in list.

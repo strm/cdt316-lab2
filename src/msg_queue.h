@@ -1,5 +1,5 @@
-#ifndef COM_H
-#define COM_H
+#ifndef MSG_QUEUE_H
+#define MSG_QUEUE_H
 
 #include <pthread.h>
 #include <stdlib.h>
@@ -11,7 +11,7 @@
 #define SUCCESS			(1)
 
 #define NO_ELEMENTS		(0)
-#define NO_ARG			(0)
+#define NO_ARG			(-255)
 
 //queue nood struct.
 typedef struct _node {

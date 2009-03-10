@@ -8,7 +8,7 @@
 #ifndef GLOBAL_H
 #define GLOBAL_H
 
-#include "com.h"
+#include "msg_queue.h"
 
 #define ID_GET 		(1)
 #define ID_CHECK 	(2)

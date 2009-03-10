@@ -3,6 +3,7 @@
  *	
  * */
 #include "global.h"
+#include "lock.h"
 #include <stdio.h>
 #include <unistd.h>
 #include <pthread.h>
@@ -63,6 +64,20 @@ int main(void){
 		pthread_join(thread[1], NULL);
 		pthread_join(thread[0], NULL);
 	}
+
+	/**
+	 * Testing of lock.c
+	 */
+	placeLock("hej", 2);
+	placeLock("morgon", 1);
+	placeLock("girth", 1);
+	printf("lock hej? %d\n", placeLock("hej", 1));
+	printf("is locked ? %d\n", checkLock("hej"));
+	removeLock("hej");
+	printf("%d\n",removeLock("hej"));
+	printf("is locked ? %d\n", checkLock("hej"));
+	printf("remove all %d\n", removeAll(1));
+	printf("empty? %d\n", checkLock("morgon"));
 	return 0;
 	
 }

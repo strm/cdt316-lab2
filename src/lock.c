@@ -31,9 +31,8 @@ int lockPush(char var[VAR_LEN], int id){
 	}
 	else{
 		//find last node
-		do{
+		while (current->next != NULL)
 			current = current->next;
-		} while (current != NULL);
 		current->next = nNode;
 		return TRUE;
 	}
@@ -50,15 +49,17 @@ int lockPop(char var[VAR_LEN], int id){
 		return FALSE;
 	else{
 		temp = lockList;
+		prev = lockList;
 		do{
-			prev = temp;
+			//prev = temp;
 			if(temp->id == id || strcmp(temp->var, var) == 0){
 				//match found remove node from list
-				prev = temp->next;
+				prev->next = temp->next;
 				free(temp);
 				return TRUE;
 			}
 			else{
+				prev = temp;
 				temp = temp->next;
 			}
 		} while(temp != NULL);
@@ -102,7 +103,10 @@ int checkLock(char var[VAR_LEN]){
  * TRUE if lock is sucessful FALSE if already locked
  */
 int placeLock(char var[VAR_LEN], int id){
-	return lockPush(var, id);
+	if(!checkLock(var))
+		return lockPush(var, id);
+	else
+		return FALSE;
 }
 /*
  * Unlocked the specified variable.

@@ -11,7 +11,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #define TRUE 	(1)
-#define FALSE	(2)
+#define FALSE	(0)
 #define NO_ARG	(-255)
 
 typedef struct _lockNode{

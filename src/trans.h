@@ -8,6 +8,10 @@
 
 #include "log.h"
 
+typedef struct _trans{
+	struct _trans * next;
+} transNode;
+
 int addTransaction(void);
 int removeTransaction(void);
 int logTransaction(void);
