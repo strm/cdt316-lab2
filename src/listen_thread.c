@@ -93,7 +93,7 @@ int ResizeConnectionList(connections_t *list) {
 	return 0;
 }
 
-int CreateSocket(unsigned short int port) {
+/*int CreateSocket(unsigned short int port) {
 	struct sockaddr_in sockName;
 	socketfd sock;
 	
@@ -108,7 +108,7 @@ int CreateSocket(unsigned short int port) {
 		//TODO: Add error handling here
 	}
 	return sock;
-}
+}*/
 
 int ReadMessage(socketfd sock, message_t *buf) {
 	int nBytes;
@@ -120,26 +120,26 @@ void HandleMessage(message_t *msg, socketfd from, fd_set *fdSet, connections_t *
 	int i, count;
 	
 	switch(msg->msgType) {
-		case TRANSACTION:
+		case MW_TRANSACTION:
 			/* TODO: Incoming transaction should be forwarded to worker thread through queue */
 			break;
-		case SYNCHRONIZE:
+		case MW_SYNCHRONIZE:
 			/* TODO: send to worker thread for processing */
 			break;
-		case COMMIT:
+		case MW_COMMIT:
 			/* TODO: send to worker thread for processing */
 			break;
-		case CONNECT:
+		case MW_CONNECT:
 			/* TODO: this is a reply from middleware we connected to, contains information about sequence number etc. */
 			break;
-		case DISCONNECT:
+		case MW_DISCONNECT:
 			/* TODO: Add mutex to lock the connection list so no bad things might happen */
 			RemoveConnection(list, from);
 			if(fdSet != NULL)
 				FD_CLR(from, fdSet);
 			close(from);
 			break;
-		case ACK:
+		case MW_ACK:
 			/* TODO: Wait for all connections to ACK, then flag worker thread to commit */
 			// Keep track of which middlewares that have sent an ACK, and count number of ACK's received
 			for(i = 0, count = 0; i < list->maxConnections; i++) {
@@ -156,7 +156,7 @@ void HandleMessage(message_t *msg, socketfd from, fd_set *fdSet, connections_t *
 				/* TODO: Flag worker thread to commit changes and send commit to all connected middlewares */
 			}
 			break;
-		case NAK:
+		case MW_NAK:
 			/* TODO: Forward to worker thread for rollback */
 			break;
 	}
@@ -221,23 +221,7 @@ void *ListeningThread(void *arg) {
 	return (void *)0;
 }
 
-void initSocketAddress(struct sockaddr_in *name, char *hostName, unsigned short int port) {
-	struct hostent *hostInfo; /* Contains info about the host */
-	/* Socket address format set to AF_INET for internet use. */
-	name->sin_family = AF_INET;     
-	/* Set port number. The function htons converts from host byte order to network byte order.*/
-	name->sin_port = htons(port);   
-	/* Get info about host. */
-	hostInfo = gethostbyname(hostName); 
-	if(hostInfo == NULL) {
-		fprintf(stderr, "initSocketAddress - Unknown host %s\n",hostName);
-		exit(EXIT_FAILURE);
-	}
-	/* Fill in the host name into the sockaddr_in struct. */
-	name->sin_addr = *(struct in_addr *)hostInfo->h_addr;
-}
-
-void *ComThread(void *arg) {
+/*void *ComThread(void *arg) {
 	int i;
 	message_t msg;
 	socketfd sock;
@@ -257,16 +241,16 @@ void *ComThread(void *arg) {
 	}
 
 	for(i = rand()%50; i >= 0; i--) {
-		msg.msgType = ACK;
+		msg.msgType = MW_ACK;
 		send(sock, (void *)&msg, sizeof(msg), 0);
 		sleep(2);
 	}
-	msg.msgType = DISCONNECT;
+	msg.msgType = MW_DISCONNECT;
 	send(sock, (void *)&msg, sizeof(msg), 0);
 	return (void*)0;
-}
+}*/
 
-int main(int argc, char *argv[]) {
+/*int main(int argc, char *argv[]) {
 	pthread_t listenThread, comThread[200];
 	message_t msg;
 	socketfd sock;
@@ -319,4 +303,4 @@ int main(int argc, char *argv[]) {
 	send(sock, (void *)&msg, sizeof(msg), 0);
 	pthread_join(listenThread, NULL);
 	return 0;
-}
+}*/
