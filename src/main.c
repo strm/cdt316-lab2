@@ -125,7 +125,6 @@ int main(void){
 	
 	printf("rm trans: %d\n", removeTransaction(&tList, 5));
 	
-	
 	return 0;
 	
 }

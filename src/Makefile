@@ -28,6 +28,6 @@ trans.o: trans.c trans.h
 parser.o: parser.c parser.h
 	$(CC) $(CFLAGS) -o parser.o parser.c
 middle: ${OBJMIDDLE}
-	$(CC) $(CLFAGS) -DLINUX -pipe -I../framework/ -I../framework/hidden -o middle ${OBJMIDDLE} -L../framework -lgdbm
+	$(CC) -DLINUX -pipe -I../framework/ -I../framework/hidden -o middle ${OBJMIDDLE} -L../framework -lgdbm
 clean:
 	rm -f $(PROG) $(OBJS) *~
