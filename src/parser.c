@@ -5,6 +5,7 @@
  */
 #include "parser.h"
 #include <stdio.h>
+#include <stdlib.h>
 
 #define DB_GLOBAL "DATABASE1"
 
@@ -79,9 +80,9 @@ int getFromDB(varList ** var){
  */
 int localParse(varList ** var, varList * trans){
 	varList * iter = trans;
-	varList * writer = (*var);
 	command tmp;
 	char * value;
+	int xValue, yValue, result;
 	while( iter != NULL ){
 		tmp = iter->data;
 		switch (tmp.op) {
@@ -114,13 +115,83 @@ int localParse(varList ** var, varList * trans){
 				break;
 			case 2: //ADD <OUT> = <IN> + <IN>
 				if( is_entry(tmp.arg1) && varListFind(tmp.arg1, (*var)) ){
-					if( is_entry(tmp.arg1) && varListFind(tmp.arg1, (*var)) ){
-						if( is_entry(tmp.arg1) && varListFind(tmp.arg1, (*var)) ){
-				}
+					//X value
+					if( is_entry(tmp.arg2) && varListFind(tmp.arg2, (*var)) ){
+						value = varListGetValue((*var), tmp.arg2);
+						if(value != NULL){
+							xValue = atoi(value);
+						}
+						else{
+							printf("ADD %s %s ? (FAIL)", tmp.arg1, tmp.arg2);
+							break;
+						}
+					}
+					else{
+						xValue = atoi(tmp.arg2);
+					}
+					//y value
+					if( is_entry(tmp.arg3) && varListFind(tmp.arg3, (*var)) ){
+						value = varListGetValue((*var), tmp.arg3);
+						if( value != NULL){
+							yValue = atoi(value);
+						}
+						else{
+							printf("ADD %s %s %s (FAIL)", tmp.arg1, tmp.arg2, tmp.arg3);
+							break;
+						}
+					}
+					else{
+						yValue = atoi(tmp.arg3);
+					}
+
+					//do math
+					result = xValue + yValue;
+					//do itoa(fake) and assing to tmp.arg1
+					sprintf(value, "%d", result);
+					//assign value
+					if(varListSetValue(var, tmp.arg1, value))
+						printf("ADD %s %s %s (DONE)\n", tmp.arg1, tmp.arg2, tmp.arg3);
+					else
+						printf("ADD %s %s %s (FAIL)\n", tmp.arg1, tmp.arg2, tmp.arg3);
+
+			}
 				else
 					printf("ADD %s ? ? (FAIL)\n", tmp.arg1);
+				break;
+			case PRINT:
+				//nothing to see here move along
+				break;
+			case DELETE:
+				if( is_entry(tmp.arg1) && varListFind(tmp.arg1, (*var)) ){
+					//set string to  \0 to ask for a delete if value doesnt change
+					//TODO is this a good idea
+					if(varListSetValue(var, tmp.arg1, "\0"))
+						printf("DELETE %s (DONE)", tmp.arg1);
+					else
+						printf("DELETE %s (FAIL)", tmp.arg1);
+				}
+				else
+					printf("DELETE %s (FAIL)", tmp.arg1);
+				break;
+			case SLEEP:
+				//TODO should we do this
+				break;
+			case IGNORE:
+				//TODO should we do this
+				break;
+			case MAGIC:
+				//TODO should we do this
+				break;
+			case QUIT:
+				/*
+				 * Should not be parsed
+				 */
+				break;
+			case NOCMD:
+				printf("NO CMD\n");
+				break;
 				
 		}
 	}
-
+	return 1; //TODO WHAT THE ?
 }

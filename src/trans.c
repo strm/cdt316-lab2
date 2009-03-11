@@ -147,7 +147,7 @@ char * varListGetValue(varList * list, char var[ARG_SIZE]){
  * Changes a value
  */
 int varListSetValue(varList ** List, char var[ARG_SIZE], char val[ARG_SIZE]){
-	arList * list = (*List);
+	varList * list = (*List);
 	while( list != NULL ){
 		if(!strcmp(list->data.arg1, var)){
 			strcpy(list->data.arg2, val);
