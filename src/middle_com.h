@@ -10,8 +10,8 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <netdb.h>
-#include "../framework/io.h"
-#include "../framework/msg.h"
+#include "../framework/hidden/io.h"
+#include "../framework/hidden/msg.h"
 
 void initSocketAddress(struct sockaddr_in *name, char *hostName, unsigned short int port);
 int CreateSocket(unsigned short int port);

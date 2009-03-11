@@ -48,9 +48,6 @@ typedef struct {
 	data_t data[MSG_MAX_DATA];
 } message_t;
 
-typedef int socketfd;
-
-
 int ReadMessage(int sock, message_t *buf);
 void HandleMessage(message_t *msg, socketfd from, fd_set *fdSet, connections_t *list);
 void *ListeningThread(void *arg);

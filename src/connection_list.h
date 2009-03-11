@@ -1,6 +1,10 @@
 #ifndef _CONNECTION_LIST_H_
 #define _CONNECTION_LIST_H_
 
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdint.h>
+
 // Initial maximum number of connections
 #define CONN_DEFAULT_LIMIT	(10)
 // How many connections to add to the connection list when expanding
@@ -27,6 +31,8 @@ typedef struct {
 	connection_t *connection;
 } connections_t;
 
+typedef int socketfd;
+
 /* Adds a connection to the first available position */
 int AddConnection(connections_t *list, int sock);
 
@@ -40,3 +46,4 @@ int InitConnectionList(connections_t *list);
 int ResizeConnectionList(connections_t *list);
 
 #endif
+

@@ -18,7 +18,7 @@ int AddConnection(connections_t *list, socketfd sock) {
 			
 			if(list->maxConnections - list->nConnections <= CONN_RESIZE_THRESHOLD)
 				ResizeConnectionList(list);
-			
+			printf("Added connection from %d in connection list\n", sock);
 			break;
 		}
 	}
@@ -39,6 +39,7 @@ int RemoveConnection(connections_t *list, socketfd sock) {
 		if(list->connection[i].socket == sock) {
 			list->connection[i].connStatus = STATUS_DISCONNECTED;
 			list->nConnections--;
+			printf("Removed connection from %d in connection list\n", sock);
 			break;
 		}
 	}
