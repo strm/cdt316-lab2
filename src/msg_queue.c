@@ -32,16 +32,17 @@ message_t newMsg(void){
  * Creates a new message_t struct and starts filling it up
  * User needs to check returned message_t for sizeOfData = 7 if eof is FALSE
  */
-message_t * createMessage(char var[VAR_LEN], char value[VALUE_LEN], int cmd,int eof){
+message_t * createMessage(int cmd, char arg1[ARG_SIZE], char arg2[ARG_SIZE], char arg3[ARG_SIZE], int eof){
 	static message_t msg;
 	message_t * ret = (message_t *) malloc(sizeof(message_t));
 	
 	if(msg.msgType != -1) 
 		msg = newMsg();
 	msg.sizeOfData++;
-	strncpy(msg.data[(msg.sizeOfData)].variable, var, VAR_LEN-1);
-	strcpy(msg.data[msg.sizeOfData].value, value);
-	msg.data[msg.sizeOfData].cmd = cmd;
+	strcpy(msg.data[(msg.sizeOfData)].arg1, arg1);
+	strcpy(msg.data[(msg.sizeOfData)].arg2, arg2);
+	strcpy(msg.data[(msg.sizeOfData)].arg3, arg3);
+	msg.data[msg.sizeOfData].op = cmd;
 	*ret = msg;
 	//reset cases
 	if ( msg.sizeOfData == 7 || eof == TRUE)

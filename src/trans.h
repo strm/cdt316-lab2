@@ -13,7 +13,7 @@
 #define NO_ARG	(-255)
 
 typedef struct _var{
-	data_t data;
+	command data;
 	struct _var * next;
 } varList;
 
@@ -31,8 +31,9 @@ int commitTransaction(transNode ** list, int id);
 transNode * createTransaction(int id);
 
 //functions for handling a varList
-data_t varListPop(varList ** arg); //TODO used?
-int varListPush(data_t data, varList ** arg);
+command varListPop(varList ** arg); //TODO used?
+int varListPush(command data, varList ** arg);
+int varListFind(char var[ARG_SIZE], varList * list);
 
 
 
