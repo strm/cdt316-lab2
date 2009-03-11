@@ -4,6 +4,7 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include "soups.h"
+#include "../framework/cmd.h"
 
 #define TRUE			(1)
 #define FALSE			(0)
@@ -29,5 +30,5 @@ int setup(node ** node, pthread_mutex_t * mutex);
 int push(node ** start, node * new_node);
 node * pop (node ** start);
 node * createNode(message_t * msg);
-message_t * createMessage(char var[VAR_LEN], char value[VALUE_LEN], int cmd, int eof);
+message_t * createMessage(int cmd, char arg1[ARG_SIZE], char arg2[ARG_SIZE], char arg3[ARG_SIZE], int eof);
 #endif

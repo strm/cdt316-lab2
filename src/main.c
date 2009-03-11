@@ -17,12 +17,12 @@ void * buster (void * arg){
 	message_t * msg;
 	node * nMsg;
 	for (p = 0; p < n; p++){
-		msg = createMessage("hej", "hälsning", 0, 1);
+		msg = createMessage(0,"hej", "hälsning", "hej", 1);
 		if(p == n-1)
 			msg->msgType = -1;
 		else
 			msg->msgType = p;
-		printf("%s\n", msg->data[0].variable);
+		printf("%s\n", msg->data[0].arg1);
 		msg->msgId = p;
 		nMsg = createNode(msg);
 		globalMsg(MSG_PUSH, nMsg);
@@ -43,7 +43,7 @@ void * rose (void * arg){
 			_while = 1;
 		}
 		else {
-		printf("\nRose: %d %s \n", temp->msg.msgType, temp->msg.data[temp->msg.sizeOfData].variable);
+		printf("\nRose: %d %s \n", temp->msg.msgType, temp->msg.data[temp->msg.sizeOfData].arg1);
 			if(temp->msg.msgType != -1)
 				_while = 1;
 			else
@@ -59,9 +59,9 @@ void * rose (void * arg){
  */
 int main(void){
 	varList * vList = NULL;
-	data_t dt;
-	data_t tmp;
-	dt.cmd = 0;
+	command dt;
+	command tmp;
+	dt.op = 0;
 	transNode * tList = NULL;
 	pthread_t thread[2];
 	if(globalMsg(MSG_SETUP, MSG_NO_ARG) == NULL){
@@ -96,19 +96,19 @@ int main(void){
  	/**
 	 * Testing of trans
 	 */
-	dt.cmd++;
+	dt.op++;
 	printf("varListPust = %d\n", varListPush(dt, &vList));
-	dt.cmd++;
+	dt.op++;
 	printf("varListPust = %d\n", varListPush(dt, &vList));
-	dt.cmd++;
+	dt.op++;
 	printf("varListPust = %d\n", varListPush(dt, &vList));
-	dt.cmd++;
+	dt.op++;
 	printf("varListPust = %d\n", varListPush(dt, &vList));
 	printf("varList = {");
 	do{
 		tmp = varListPop(&vList);
-		printf("%d,", tmp.cmd);
-	} while( tmp.cmd != NO_ARG );
+		printf("%d,", tmp.op);
+	} while( tmp.op != NO_ARG );
 	printf("}\n");
 
 	/*
@@ -118,12 +118,12 @@ int main(void){
 	printf("trans: %d\n",addTransaction(&tList, createTransaction(2)));
 	printf("trans: %d\n",addTransaction(&tList, createTransaction(3)));
 	
-	printf("rm trans: %d\n", removeTransaction(&tList, 4));
-	printf("rm trans: %d\n", removeTransaction(&tList, 2));
+	printf("rm trans: %d\n", removeTransaction(&tList, 3));
+	printf("rm trans: %d\n", removeTransaction(&tList, 1));
 	printf("rm trans: %d\n", removeTransaction(&tList, 2));
 	printf("rm trans: %d\n", removeTransaction(&tList, 1));
 	
-	printf("rm trans: %d\n", removeTransaction(&tList, 1));
+	printf("rm trans: %d\n", removeTransaction(&tList, 5));
 	
 	
 	return 0;

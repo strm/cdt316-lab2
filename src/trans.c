@@ -36,14 +36,12 @@ int removeTransaction(transNode ** list, int id){
 		
 		}while(current != NULL);
 	}
-	printf("not removed %d\n", id);
 	return FALSE;
 }
 
 
 /*
- * fafaf afea fa fa eafae ae fae fea eaf afeafeg wrgsr grg srg srg srgsr gsr
- *  ge ajka g
+ * Add a transaction to a transaction list
  */
 int addTransaction(transNode ** list, transNode * arg){
 	transNode * tmp;
@@ -76,10 +74,10 @@ transNode * createTransaction(int id){
  * Pops the first element of argument varList
  * TODO will this be used?
  */
-data_t varListPop(varList ** arg){
+command varListPop(varList ** arg){
 	varList * tmp;
-	data_t ret;
-	ret.cmd = NO_ARG;
+	command ret;
+	ret.op = NO_ARG;
 	if((*arg) == NULL)
 		printf("{0}");
 	else if((*arg)->next == NULL){
@@ -102,12 +100,12 @@ data_t varListPop(varList ** arg){
  * Adds a new item to the list.
  * Placed last for reasons.
  */
-int varListPush(data_t data, varList ** arg){
+int varListPush(command data, varList ** arg){
 	varList * tmp = (varList *) malloc(sizeof(varList));
 	varList * cur;
 	tmp->data = data;
 	tmp->next = NULL;
-	printf("push(%d)", data.cmd);
+	printf("push(%d)", data.op);
 	if(*arg == NULL){
 		(*arg) = tmp;
 		return -1;
@@ -121,4 +119,17 @@ int varListPush(data_t data, varList ** arg){
 		return 1;
 	}
 	return 0;
+}
+
+/*
+ * Returns TRUE if variable exists in list or FALSE if not
+ */
+int varListFind(char var[ARG_SIZE], varList * list){
+	while ( list != NULL){
+		if(!strcmp(list->data.arg1, var))
+			return TRUE;
+		else
+			list = list->next;
+	}
+	return FALSE;
 }
