@@ -114,7 +114,7 @@ int main(int argc, char **argv) {
     if (strncmp(middleware, MWPREFIX, strlen(MWPREFIX)) != 0) {
       sprintf(db, "%d%s%s", getuid(), MWPREFIX, middleware);
     } else {
-      sprintf(db, "%d%s", getuid(), middleware);
+      sprintf(db, "%s%s", MWPREFIX, middleware);
     }
     data[0] = '\0';		/* Ensure that data is cleared */
     status = do_get(sock, "nameserver", db, data, NULL);
