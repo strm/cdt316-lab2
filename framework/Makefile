@@ -13,7 +13,7 @@ OBJMIDDLE = middle.o hidden/middle-support.o hidden/io.o hidden/msg.o
 OBJFRONTEND = hidden/frontend.o hidden/io.o hidden/msg.o
 
 # Linux link libraries
-LIBS = -L. -lgdbm -lgdbm_compat
+LIBS = -L. -lgdbm
 
 PROGRAMS = dbserver middle frontend
 

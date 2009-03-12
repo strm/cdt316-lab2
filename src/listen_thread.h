@@ -14,6 +14,7 @@
 #include <time.h>
 #include "middle_com.h"
 #include "connection_list.h"
+#include "soups.h"
 
 // Temporary define, these values will be determined elsewhere in the future
 #define PORT			(12345)
@@ -35,18 +36,6 @@
 #ifndef FALSE
 #define FALSE 0
 #endif
-
-typedef struct {
-	char variable[VAR_LEN];
-	int value;
-} data_t;
-
-typedef struct {
-	int msgType;
-	int endOfMsg;
-	int msgId;
-	data_t data[MSG_MAX_DATA];
-} message_t;
 
 int ReadMessage(int sock, message_t *buf);
 void HandleMessage(message_t *msg, socketfd from, fd_set *fdSet, connections_t *list);

@@ -5,6 +5,9 @@
 #include "middle_com.h"
 #include "listen_thread.h"
 #include "connection_list.h"
+#include "parser.h"
+#include "trans.h"
+#include "soups.h"
 
 #define NS_LOOKUP_ATTEMPTS	(10)
 #define NS_SLEEP_DELAY		(2)
@@ -14,6 +17,7 @@
 #define MW_CONNECT_SUCCESS	(1)
 #define MW_CONNECT_FAIL		(0)
 
+#define LOCAL_PARSE		(1)
 static char myname[TABLENAMELEN] = "";
 static connections_t connList;
 char DB_GLOBAL[ARG_SIZE];
@@ -199,29 +203,98 @@ void stop_middleware(int sock) {
 	myname[0] = '\0';
 	close(sock);
 }
-
-int main(void) {
+int main(int argc, char * argv[]) {
 	pthread_t listenThread;
-	int mw_sock;
-
-	srand(time(NULL));
-	
-	InitConnectionList(&connList);
-
-	set_severity(4);
 	
 	printf("Creating listening thread\n");
 	fflush(stdout);
+	sleep(1);
 	pthread_create(&listenThread, NULL, ListeningThread, (void *)NULL);
-	while(1) {
-		printf("Starting middleware\n");
-		mw_sock = start_middleware("MIDDLEWARE");
-		printf("Middleware started\n");
-		sleep(rand() % 30);
-		printf("Stopping middleware\n");
-		stop_middleware(mw_sock);
-		sleep(5);
+	printf("Starting middleware\n");
+	fflush(stdout);
+	sleep(1);
+	start_middleware("MIDDLEWARE");
+	printf("Middleware started\n");
+	fflush(stdout);
+	sleep(1);
+#if LOCAL_PARSE
+	/*
+	 * Testing local parser
+	 */
+	printf("Welcome to local parser\n");
+	//socket settings
+	struct sockaddr_in addr;
+	int addrlen = sizeof(addr);
+	int psock;
+	int res;
+	long num_cmds;
+	//transaction
+	transNode * trans = createTransaction(0); //TODO add uniq id here
+	//open socked to client
+	psock = accept(sock, (struct sockaddr *)&addr, &addrlen);
+	if(!psock){
+		debug_out(2, "Failed to accept incoming connection.\n");
+		exit(1);
 	}
+	printf("Accepted client connection maybe\n");
+	//read number of commands
+	res = force_read(psock, &num_cmds, sizeof(num_cmds));
+	if( res < sizeof(num_cmds) ){
+		if( res < 0) 
+			my_perror(2, "force_read()");
+		else
+			debug_out(2, "Failed to read number of lines (%d)\n");
+	}
+	num_cmds = ntohl(num_cmds);
+	num_rsp = 0;
+	//Read all commands
+	for (; num_cmds; num_cmds--){
+		 command cmd;
+		 response rsp;
+		 memset(&rsp, 0, sizeof(rsp));
+		 //read the command
+		 res = force_read(psock, &cmd, sizeof(command));
+		 if(res < sizeof(command)){
+		 	if( res  < 0 )
+				my_perror(2, "force_read");
+			else
+				debug_out(2, "Failed to read command (%d)\n");
+			exit(1);
+		 }
+
+		 cmd.op = ntohl(cmp.op);
+		 rs.seq = cmd.seq;
+		 /*
+		  * Add to list of unparsed commands here
+		  */
+		 if(varListPush(cmd, (&trans)->unparsed)){
+			 debug_out(5, "Couldn't add command struct to varList");
+			 exit(2);
+		 }
+		 //TODO DEBUG EXTRA TODO
+		 if(varListFind(cmd.arg1, (&trans)->unparsed)){
+		 	debug_out(5, "Command struct not found in list");
+			exit(2);
+		 }
+
+	}
+	//TODO CLOSE PSOCK FOR TESTING ONLY TODO
+	close(psock);
+	//parse the list of commands
+	if( getUsedVariables((&trans)->parsed, trans->unparsed) ){
+		debug_out(5, "Failed to create a list of variables from the unparsed list");
+		exit(2);
+	}
+	//Do local parsing
+	if( localParse((&trans)->parsed, trans->unparsed) ){
+		debug_out(5, "localParse Failed");
+		exit(2);
+	}
+
+	/*
+	 * End parser tests.
+	 */
+#endif
 	pthread_join(listenThread, NULL);
 	return 0;
 }
