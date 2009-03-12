@@ -17,7 +17,7 @@ int noLock(void){
 /*
  * Pushes a new node to the list.
  */
-int lockPush(char var[VAR_LEN], int id){
+int lockPush(char var[ARG_SIZE], int id){
 	lockNode * nNode = (lockNode *) malloc(sizeof(lockNode));
 	lockNode * current = lockList;
 	//setup the new node
@@ -43,7 +43,7 @@ int lockPush(char var[VAR_LEN], int id){
  * Since only one with the same var should exist we remove the first one found that.
  * Also if id is specified we remove the first matched id
  */
-int lockPop(char var[VAR_LEN], int id){
+int lockPop(char var[ARG_SIZE], int id){
 	lockNode * temp, * prev;
 	if(noLock())
 		return FALSE;
@@ -71,7 +71,7 @@ int lockPop(char var[VAR_LEN], int id){
 /*
  * Checks if a node with the argument exists.
  */
-int lockFind(char var[VAR_LEN]){
+int lockFind(char var[ARG_SIZE]){
 	lockNode * temp = lockList;
 	if(noLock());
 	else{
@@ -97,14 +97,14 @@ int lockBatchPop(int id){
 /*
  * Returns TRUE if locked FALSE if not.
  */
-int checkLock(char var[VAR_LEN]){
+int checkLock(char var[ARG_SIZE]){
 	return lockFind(var);
 }
 /*
  * Places a new lock. After checkLock have been used.
  * TRUE if lock is sucessful FALSE if already locked
  */
-int placeLock(char var[VAR_LEN], int id){
+int placeLock(char var[ARG_SIZE], int id){
 	if(!checkLock(var))
 		return lockPush(var, id);
 	else
@@ -114,7 +114,7 @@ int placeLock(char var[VAR_LEN], int id){
  * Unlocked the specified variable.
  * Returns FALSE if not locked.
  */
-int removeLock(char var[VAR_LEN]){
+int removeLock(char var[ARG_SIZE]){
 	return lockPop(var, NO_ARG);	
 }
 /*
@@ -125,3 +125,24 @@ int removeAll(int id){
 	return lockBatchPop(id);
 }
 
+/*
+ * Lock all variables in the transaction
+ */
+int lockTransaction(transNode * trans){
+	varList * tmp = trans->parsed;
+	if(tmp == NULL)
+		return FALSE;
+	else{
+		//check all variables in parsed if they are locked.
+		while(tmp != NULL){
+			if(placeLock(tmp->data.arg1, trans->id));
+			else{
+				//lock failed
+				lockBatchPop(trans->id);		
+				return FALSE;
+			}
+			tmp = tmp->next;
+		}	
+	}
+	return TRUE;
+}

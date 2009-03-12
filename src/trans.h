@@ -9,6 +9,8 @@
 #include <stdlib.h>
 #include "log.h"
 #include "soups.h"
+#include "../framework/cmd.h"
+#include "../framework/middle-support.h"
 
 #define NO_ARG	(-255)
 
@@ -35,6 +37,7 @@ command varListPop(varList ** arg); //TODO used?
 int varListPush(command data, varList ** arg);
 int varListFind(char var[ARG_SIZE], varList * list);
 
-
+char * varListGetValue(varList * list, char var[ARG_SIZE]);
+int varListSetValue(varList ** List, char var[ARG_SIZE], char val[ARG_SIZE]);
 
 #endif

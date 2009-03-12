@@ -9,7 +9,9 @@
 #define SOUPS_H
 
 #include <string.h>
+#include "trans.h"
 #include "../framework/cmd.h"
+#include "../framework/middle-support.h"
 
 #define VAR_LEN		(255)
 #define VALUE_LEN	(768)
@@ -24,4 +26,5 @@ typedef struct {
 	command data[MSG_MAX_DATA];
 } message_t;
 
+char test[ARG_SIZE];
 #endif

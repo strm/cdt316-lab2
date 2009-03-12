@@ -7,7 +7,12 @@
 #include "connection_list.h"
 
 #define NS_LOOKUP_ATTEMPTS	(10)
+#define NS_SLEEP_DELAY		(2)
+#define NS_VERIFICATION_DELAY	(NS_SLEEP_DELAY + 1)
 #define MAX_CONNECT_ATTEMPTS	(3)
+
+#define MW_CONNECT_SUCCESS	(1)
+#define MW_CONNECT_FAIL		(0)
 
 static char myname[TABLENAMELEN] = "";
 static connections_t connList;
@@ -22,13 +27,24 @@ void ParseAddress(char *ns_entry, struct sockaddr_in *hostInfo) {
 	initSocketAddress(hostInfo, conn_address, conn_port);
 }
 
+int ConnectMiddleware(char *ns_entry_data, int csock, struct sockaddr_in *hostInfo) {
+	ParseAddress(ns_entry_data, hostInfo);
+	if(connect(csock, (struct sockaddr *)&hostInfo, sizeof(struct sockaddr_in)) < 0) {
+		return MW_CONNECT_FAIL;
+	}
+	else {
+		AddConnection(&connList, csock);
+		return MW_CONNECT_SUCCESS;
+	}
+}
+
 int start_middleware(char *database) {
 	int sock;
 	char address[ARG_SIZE];
 	int reallen;
 	struct sockaddr_in real;
-	char db[TABLENAMELEN];
-	char *p;
+//	char db[TABLENAMELEN];
+//	char *p;
 	
 	int mw_instance = -1;
 	int ns_miss_count;
@@ -66,24 +82,31 @@ int start_middleware(char *database) {
 	for(ns_miss_count = 0, ns_iterator = 0; ns_miss_count < NS_LOOKUP_ATTEMPTS; ns_iterator++) {
 		sprintf(ns_entry, "%s%d", database, ns_iterator);
 		if(get_entry(ns_entry_data, "nameserver", ns_entry)) {
-			//conn_address = strtok(ns_entry_data, ":");
-			//conn_port = atoi(strtok(NULL, ":"));
 			conn_sock = socket(PF_INET, SOCK_STREAM, 0);
-			//initSocketAddress(&hostInfo, conn_address, conn_port);
 			
 			for(conn_retries = 0; conn_retries < MAX_CONNECT_ATTEMPTS; conn_retries++) {
 				if(get_entry(ns_entry_data, "nameserver", ns_entry)) {
-					ParseAddress(ns_entry_data, &hostInfo);
+					if(ConnectMiddleware(ns_entry_data, conn_sock, &hostInfo) == MW_CONNECT_SUCCESS) {
+						printf("Connected to %s (%s)\n", ns_entry, ns_entry_data);
+						AddConnection(&connList, conn_sock);
+						break;
+					}
+					else {
+						printf("Could not connect to %s (%s)... Retrying in %d\n", ns_entry, ns_entry_data, NS_SLEEP_DELAY);
+						sleep(NS_SLEEP_DELAY);
+					}
+
+					/*ParseAddress(ns_entry_data, &hostInfo);
 					if(connect(conn_sock, (struct sockaddr *)&hostInfo, sizeof(hostInfo)) < 0) {
 						perror("connect");
 						printf("Could not connect to %s... Retrying in 2 seconds\n", ns_entry);
 						sleep(2);
 					}
 					else {
-						printf("Connected to %s\n", ns_entry);
+						printf("Connected to %s (%s)\n", ns_entry, ns_entry_data);
 						AddConnection(&connList, conn_sock);
 						break;
-					}
+					}*/
 				}
 			}
 			
@@ -97,13 +120,29 @@ int start_middleware(char *database) {
 						debug_out(5, "Failed to enter data into nameserver\n");
 						exit(1);
 					}
-					debug_out(5, "I am %s\n", myname);
+					debug_out(5, "I THINK am %s (%d s) until verification\n", myname, NS_VERIFICATION_DELAY);
+					sleep(NS_VERIFICATION_DELAY);
+					if(get_entry(ns_entry_data, "nameserver", ns_entry)) {
+						// Another middleware stole our nameserver entry
+						if(strncmp(address, ns_entry_data, ARG_SIZE) != 0) {
+							mw_instance = -1;
+							if(ConnectMiddleware(ns_entry_data, conn_sock, &hostInfo) == MW_CONNECT_SUCCESS) {
+								debug_out(5, "Verification failed - Connected to %s (%s)\n", ns_entry, ns_entry_data);
+								AddConnection(&connList, conn_sock);
+							}
+							// Another middleware stole our entry and disappeared, ignore the slot and let
+							// someone else take it later
+							else {
+								debug_out(5, "Verification failed - Could not connect to %s (%s)\n",ns_entry, ns_entry_data);
+							}
+						}
+					}
 				}
 				else {
 					if(!delete_entry("nameserver", ns_entry))
-						debug_out(5, "Could not delete %s - entry does not exist\n", ns_entry);
+						debug_out(5, "Could not delete %s (%s) - entry does not exist\n", ns_entry, ns_entry_data);
 					else
-						debug_out(5, "Deleted %s from the nameserver\n", ns_entry);
+						debug_out(5, "Deleted %s (%s) from the nameserver\n", ns_entry, ns_entry_data);
 				}
 			}
 		
@@ -116,6 +155,23 @@ int start_middleware(char *database) {
 			if(!replace_entry(address, "nameserver", myname)) {
 				debug_out(5, "Failed to enter data into nameserver\n");
 				exit(1);
+			}
+			debug_out(5, "I THINK am %s (%d s) until verification\n", myname, NS_VERIFICATION_DELAY);
+			sleep(NS_VERIFICATION_DELAY);
+			if(get_entry(ns_entry_data, "nameserver", ns_entry)) {
+				// Another middleware stole our nameserver entry
+				if(strncmp(address, ns_entry_data, ARG_SIZE) != 0) {
+					mw_instance = -1;
+					if(ConnectMiddleware(ns_entry_data, conn_sock, &hostInfo) == MW_CONNECT_SUCCESS) {
+						debug_out(5, "Verification failed - Connected to %s (%s)\n", ns_entry, ns_entry_data);
+						AddConnection(&connList, conn_sock);
+					}
+					// Another middleware stole our entry and disappeared, ignore the slot and let
+					// someone else take it later
+					else {
+						debug_out(5, "Verification failed - Could not connect to %s (%s)\n",ns_entry, ns_entry_data);
+					}
+				}
 			}
 			ns_miss_count++;
 		}
@@ -146,6 +202,7 @@ void stop_middleware(int sock) {
 
 int main(void) {
 	pthread_t listenThread;
+	int mw_sock;
 
 	srand(time(NULL));
 	
@@ -158,11 +215,11 @@ int main(void) {
 	pthread_create(&listenThread, NULL, ListeningThread, (void *)NULL);
 	while(1) {
 		printf("Starting middleware\n");
-		start_middleware("MIDDLEWARE");
+		mw_sock = start_middleware("MIDDLEWARE");
 		printf("Middleware started\n");
 		sleep(rand() % 30);
 		printf("Stopping middleware\n");
-		stop_middleware("MIDDLEWARE");
+		stop_middleware(mw_sock);
 		sleep(5);
 	}
 	pthread_join(listenThread, NULL);

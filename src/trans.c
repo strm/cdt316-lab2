@@ -133,3 +133,28 @@ int varListFind(char var[ARG_SIZE], varList * list){
 	}
 	return FALSE;
 }
+//get a value from the list
+char * varListGetValue(varList * list, char var[ARG_SIZE]){
+	while( list != NULL){
+		if(!strcmp(list->data.arg1, var))
+			return list->data.arg2;
+		else
+			list = list->next;
+	}
+	return NULL;
+}
+/* 
+ * Changes a value
+ */
+int varListSetValue(varList ** List, char var[ARG_SIZE], char val[ARG_SIZE]){
+	varList * list = (*List);
+	while( list != NULL ){
+		if(!strcmp(list->data.arg1, var)){
+			strcpy(list->data.arg2, val);
+			return TRUE;
+		}
+		else
+			list = list->next;
+	}
+	return FALSE;
+}
