@@ -26,5 +26,4 @@ typedef struct {
 	command data[MSG_MAX_DATA];
 } message_t;
 
-char test[ARG_SIZE];
 #endif

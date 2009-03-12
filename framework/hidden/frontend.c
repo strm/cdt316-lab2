@@ -112,7 +112,7 @@ int main(int argc, char **argv) {
     char db[TABLENAMELEN];
 
     if (strncmp(middleware, MWPREFIX, strlen(MWPREFIX)) != 0) {
-      sprintf(db, "%d%s%s", getuid(), MWPREFIX, middleware);
+      sprintf(db, "%s%s", MWPREFIX, middleware);
     } else {
       sprintf(db, "%s%s", MWPREFIX, middleware);
     }

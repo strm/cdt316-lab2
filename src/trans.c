@@ -67,6 +67,8 @@ transNode * createTransaction(int id){
 	transNode * tmp = (transNode *) malloc(sizeof(transNode));
 	tmp->id = id;
 	tmp->next = NULL;
+	tmp->parsed = NULL;
+	tmp->unparsed = NULL;
 	return tmp;
 }
 
@@ -105,12 +107,14 @@ int varListPush(command data, varList ** arg){
 	varList * cur;
 	tmp->data = data;
 	tmp->next = NULL;
-	printf("push(%d)", data.op);
+	printf("push(%d)\n", data.op);
 	if(*arg == NULL){
+		printf("First\n");
 		(*arg) = tmp;
-		return -1;
+		return 1;
 	}
 	else{
+		printf("not first\n");
 		cur = (*arg);
 		while( (cur)->next != NULL ){
 			cur = cur->next;
@@ -126,17 +130,19 @@ int varListPush(command data, varList ** arg){
  */
 int varListFind(char var[ARG_SIZE], varList * list){
 	while ( list != NULL){
-		if(!strcmp(list->data.arg1, var))
+		if(strcmp(list->data.arg1, var) == 0)
 			return TRUE;
 		else
 			list = list->next;
+		if(list != NULL)
+			printf("%s\n", list->data.arg1);
 	}
 	return FALSE;
 }
 //get a value from the list
 char * varListGetValue(varList * list, char var[ARG_SIZE]){
 	while( list != NULL){
-		if(!strcmp(list->data.arg1, var))
+		if(strcmp(list->data.arg1, var) == 0)
 			return list->data.arg2;
 		else
 			list = list->next;
