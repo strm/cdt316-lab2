@@ -1,6 +1,6 @@
 #make file for pthread communcation testing
 
-PROG 	= app.out
+PROG 	= middleware
 OBJS	= msg_queue.o global.o main.o lock.o trans.o
 CC 	= gcc
 LD 	= gcc
@@ -12,12 +12,6 @@ OBJMIDDLE = ../framework/middle.o ../framework/hidden/middle-support.o ../framew
 OBJMIDDLEWARE = middleware.o ../framework/hidden/middle-support.o ../framework/hidden/io.o ../framework/hidden/msg.o middle_com.o listen_thread.o connection_list.o global.o lock.o trans.o msg_queue.o parser.o
 
 all: $(PROG)
-
-$(PROG) : $(OBJS) 
-	$(LD) -lpthread -o $(PROG) $(OBJS)
-
-main.o: main.c 
-	$(CC) $(CFLAGS) -o main.o main.c
 
 global.o: global.c
 	$(CC) $(CFLAGS) -o global.o global.c
@@ -53,4 +47,4 @@ middleware: ${OBJMIDDLEWARE}
 #	$(CC) ${CFLAGS} -o $@ ${OBJMIDDLEWARE} ${LIBS}
 	$(CC)  -DLINUX -pipe -I../framework -I../framework/hidden -o middleware ${OBJMIDDLEWARE} ${LIBS}
 clean:
-	rm -f $(PROG) $(OBJS) *~
+	rm -f $(PROG) $(OBJS) *~ middleware middle *.o

@@ -15,6 +15,7 @@
 int getUsedVariables(varList ** var, varList * trans){
 	int ret = 0;
 	command tmp;	
+	printf("getUSedVariables started\n");
 	while ( trans != NULL ){
 		//check all args
 		if((trans->data.op != 3 || trans->data.op >= 5)){
@@ -42,8 +43,9 @@ int getUsedVariables(varList ** var, varList * trans){
 					varListPush(tmp, var);
 					strcpy(tmp.arg1, "\0");
 				}
-			trans = trans->next;
 		}
+		trans = trans->next;
+		printf("*");
 	}
 	
 	return ret;		
@@ -83,6 +85,7 @@ int localParse(varList ** var, varList * trans){
 	command tmp;
 	char * value;
 	int xValue, yValue, result;
+	printf("\nBegin local parse\n");
 	while( iter != NULL ){
 		tmp = iter->data;
 		switch (tmp.op) {
@@ -165,7 +168,7 @@ int localParse(varList ** var, varList * trans){
 				if( is_entry(tmp.arg1) && varListFind(tmp.arg1, (*var)) ){
 					//set string to  \0 to ask for a delete if value doesnt change
 					//TODO is this a good idea
-					if(varListSetValue(var, tmp.arg1, "\0"))
+					if(varListSetValue(var, tmp.arg1, "DELETE"))
 						printf("DELETE %s (DONE)", tmp.arg1);
 					else
 						printf("DELETE %s (FAIL)", tmp.arg1);
@@ -174,7 +177,13 @@ int localParse(varList ** var, varList * trans){
 					printf("DELETE %s (FAIL)", tmp.arg1);
 				break;
 			case SLEEP:
-				//TODO should we do this
+				printf("Going to sleep for %s\n", tmp.arg1);
+				if( is_entry(tmp.arg1) && varListFind(tmp.arg1, (*var)) ){
+					value = varListGetValue((*var), tmp.arg1);
+					sleep(atoi(value));
+				}
+				else
+					sleep(atoi(tmp.arg1));
 				break;
 			case IGNORE:
 				//TODO should we do this
@@ -192,6 +201,18 @@ int localParse(varList ** var, varList * trans){
 				break;
 				
 		}
+		iter = iter->next;
+	}
+	/*
+	 * Flag deleted items
+	 */
+	iter = (*var);
+	while ( iter != NULL ){
+		if( strcmp(iter->data.arg2, "DELETE") == 0 ){
+			iter->data.op = DELETE;
+			strcpy(iter->data.arg2, "DELETE(1)");
+		}
+		iter = iter->next;
 	}
 	return 1; //TODO WHAT THE ?
 }

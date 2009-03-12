@@ -1,4 +1,5 @@
 IGNORE
+ASSIGN girth 1000
 DELETE foo
 ASSIGN foo 10
 assign bar 20
@@ -6,4 +7,8 @@ add bar bar -10
 ADD foo foo 10
 PRINT foo
 print bar
+ASSIGN fish 0
+add fish girth 10
+SLEEP 5
+DELETE girth
 QUIT
