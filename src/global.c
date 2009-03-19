@@ -45,14 +45,13 @@ uint64_t globalId ( int cmd, int arg ) {
  * MSG_SETUP: Sets up mutex and start node (must be called first and never again)
  * MSG_PUSH/POP: Normal push pop behavior.
  * MSG_CLEAN: Cleans the queue(exterminate!)
- */
+ * MSG_LOCK
+ * MSG_UNLOCK
+ * */
 node * globalMsg ( int cmd, node * arg){
 	static node * _msg;
 	static int _setup = FALSE;
 	node * ret;
-	//lock mutex
-	if( cmd != MSG_SETUP )	
-		pthread_mutex_lock(&_msgMutex);
 	switch (cmd){
 		case MSG_GET:
 			ret = _msg;
@@ -78,8 +77,14 @@ node * globalMsg ( int cmd, node * arg){
 			_setup = FALSE;
 			ret = MSG_NO_ARG;
 			break;
+		case MSG_UNLOCK:
+			ret = MSG_NO_ARG;
+			pthread_mutex_unlock(&_msgMutex);
+			break;
+		case MSG_LOCK;
+			ret = MSG_NO_ARG;
+			pthread_mutex_lock(&_msgMutex);
+			break;
 	}
-	//unlock
-	pthread_mutex_unlock(&_msgMutex);
 	return ret;
 }

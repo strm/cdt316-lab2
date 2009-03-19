@@ -20,6 +20,8 @@
 #define MSG_POP		(3)
 #define MSG_PUSH	(4)
 #define MSG_CLEAN	(5)
+#define MSG_LOCK	(6)
+#define MSG_UNLOCK	(-6)
 #define MSG_NO_ARG	(NULL)
 
 //functions 
