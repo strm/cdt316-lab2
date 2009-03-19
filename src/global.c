@@ -77,11 +77,11 @@ node * globalMsg ( int cmd, node * arg){
 			_setup = FALSE;
 			ret = MSG_NO_ARG;
 			break;
-		case MSG_UNLOCK;
+		case MSG_UNLOCK:
 			ret = MSG_NO_ARG;
 			pthread_mutex_unlock(&_msgMutex);
 			break;
-		case MSG_LOCK;
+		case MSG_LOCK:
 			ret = MSG_NO_ARG;
 			pthread_mutex_lock(&_msgMutex);
 			break;
