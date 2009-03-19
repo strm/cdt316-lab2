@@ -99,18 +99,6 @@ int start_middleware(char *database) {
 						debug_out(5, "Could not connect to %s (%s)... Retrying in %d\n", ns_entry, ns_entry_data, NS_SLEEP_DELAY);
 						sleep(NS_SLEEP_DELAY);
 					}
-
-					/*ParseAddress(ns_entry_data, &hostInfo);
-					if(connect(conn_sock, (struct sockaddr *)&hostInfo, sizeof(hostInfo)) < 0) {
-						perror("connect");
-						printf("Could not connect to %s... Retrying in 2 seconds\n", ns_entry);
-						sleep(2);
-					}
-					else {
-						printf("Connected to %s (%s)\n", ns_entry, ns_entry_data);
-						AddConnection(&connList, conn_sock);
-						break;
-					}*/
 				}
 			}
 			

@@ -12,6 +12,12 @@
 // How many emtpy slots before expanding the connection list
 #define CONN_RESIZE_THRESHOLD	(2)
 
+#define LIST_ADD 		(0)
+#define LIST_REMOVE		(1)
+#define LIST_INIT		(-1)
+#define LIST_CONNECTION_COUNT	(2)
+#define LIST_GET_ENTRY		(3)
+
 // Definitions for connection status
 #define STATUS_DISCONNECTED	(0)
 #define STATUS_CONNECTED	(1)
@@ -32,6 +38,9 @@ typedef struct {
 } connections_t;
 
 typedef int socketfd;
+
+/* Handles all interaction with the connectionlist */
+int ConnectionHandler(int cmd, int csock);
 
 /* Adds a connection to the first available position */
 int AddConnection(connections_t *list, int sock);

@@ -14,6 +14,7 @@
 #include <time.h>
 #include "middle_com.h"
 #include "connection_list.h"
+#include "global.h"
 #include "soups.h"
 
 // Temporary define, these values will be determined elsewhere in the future

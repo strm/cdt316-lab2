@@ -11,24 +11,27 @@
 #include "listen_thread.h"
 #include <time.h>
 
-int ReadMessage(socketfd sock, message_t *buf) {
+int ReadMessage(socketfd sock, void *buf, size_t bufsize) {
 	int nBytes;
-	nBytes = recv(sock, (void *)buf, sizeof(message_t), 0);
+	nBytes = recv(sock, buf, bufsize, 0);
 	return nBytes;
 }
 
 void HandleMessage(message_t *msg, socketfd from, fd_set *fdSet, connections_t *list) {
 	int i, count;
+	node_t *newNode;
 	
+	/*TODO: Check message id to verify that the message is somewhat expected */
 	switch(msg->msgType) {
 		case MW_TRANSACTION:
-			/* TODO: Incoming transaction should be forwarded to worker thread through queue */
-			break;
 		case MW_SYNCHRONIZE:
-			/* TODO: send to worker thread for processing */
-			break;
 		case MW_COMMIT:
-			/* TODO: send to worker thread for processing */
+		case MW_ACK:
+		case MW_NAK:
+			newNode = createNode(msg);
+			globalMsg(MSG_LOCK, MSG_NO_ARG);
+			globalMsg(MSG_PUSH, newNode);
+			globalMsg(MSG_UNLOCK, MSG_NO_ARG);
 			break;
 		case MW_CONNECT:
 			/* TODO: this is a reply from middleware we connected to, contains information about sequence number etc. */
@@ -40,39 +43,16 @@ void HandleMessage(message_t *msg, socketfd from, fd_set *fdSet, connections_t *
 				FD_CLR(from, fdSet);
 			close(from);
 			break;
-		case MW_ACK:
-			/* TODO: Wait for all connections to ACK, then flag worker thread to commit */
-			// Keep track of which middlewares that have sent an ACK, and count number of ACK's received
-			for(i = 0, count = 0; i < list->maxConnections; i++) {
-				if(list->connection[i].socket == from) {
-					list->connection[i].transStatus = STATUS_ACKED;
-				}
-				if(list->connection[i].transStatus == STATUS_ACKED) {
-					count++;
-				}
-			}
-			
-			// If all other middlewares has sent an ACK it is time to commit changes
-			if(count == list->nConnections) {
-				/* TODO: Flag worker thread to commit changes and send commit to all connected middlewares */
-			}
-			break;
-		case MW_NAK:
-			/* TODO: Forward to worker thread for rollback */
-			break;
 	}
 }
 
-/*
-Things needed by listening thread:
-connection_list from worker thread so they can process communication properly (inited by either one)
-mutex for the connections list to prevent problems
-queue from worker thread so messages can be passed between the threads (inited by worker thread)
-mutex for the queue to prevent problems
-*/
 void *ListeningThread(void *arg) {
 	fd_set masterFdSet, readFdSet; /* Used by select */
-	int i;
+	fd_set clientSet, mwSet;
+	fd_set clientReadSet, mwReadSet;
+	int i, nBytes;
+	void * recvBuf;
+	size_t bufSize;
 	socketfd connectionSocket;
 	socketfd listenSocket = CreateSocket(PORT);
 	message_t msg;
@@ -87,6 +67,8 @@ void *ListeningThread(void *arg) {
 		//TODO: Add error handling here
 	}
 	FD_ZERO(&masterFdSet);
+	FD_ZERO(&clientSet);
+	FD_ZERO(&mwSet);
 	FD_SET(listenSocket, &masterFdSet);
 	
 	// The thread should wait for new messages when not processing something
@@ -109,14 +91,32 @@ void *ListeningThread(void *arg) {
 					AddConnection(&middlewareConnections, connectionSocket);
 				}
 				else {
-					if(ReadMessage(i, &msg)) {
-						HandleMessage(&msg, i, &masterFdSet, &middlewareConnections);
+					recvBuf = malloc(sizeof(long));
+					if((nBytes = recv(i, recvBuf, sizeof(long))) > 0) {
+						// We are about to receive stuff from a middleware
+						if((int)(&recvBuf) == -1) {
+							FD_SET(i, &mwSet)
+							FD_CLEAR(i, &masterFdSet);
+						}
+						// We are about to receive stuff from a client
+						else {
+							FD_SET(i, &clientSet);
+							FD_CLEAR(i, &masterFdSet);
+						}
 					}
 					else {
 						/* TODO: Add error handling */
 					}
 				}
 			}
+		}
+		readFdSet = masterFdSet;
+		if(select(FD_SETSIZE, &readFdSet, NULL, NULL, NULL) < 0) {
+			perror("select: ");
+			//TODO: Add error handling here
+		}
+		// Iterate over all incoming middleware messages
+		for(i = 0; i < FD_SETSIZE; i++) {
 		}
 	}
 	return (void *)0;
