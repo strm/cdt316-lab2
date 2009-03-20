@@ -15,7 +15,7 @@
 
 #define VAR_LEN		(255)
 #define VALUE_LEN	(768)
-#define MSG_MAX_DATA	(8)
+#define MSG_MAX_DATA	(7)
 
 
 typedef struct {

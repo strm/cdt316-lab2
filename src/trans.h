@@ -25,7 +25,7 @@ typedef struct _trans{
 	varList * unparsed;
 	int id;
 	int owner;
-	connections_t midList;
+	int acks;
 	struct _trans * next;
 } transNode;
 
@@ -33,6 +33,8 @@ int addTransaction(transNode ** list, transNode * arg);
 int removeTransaction(transNode ** list, int id);
 int logTransaction(transNode ** list, int id);
 int commitTransaction(transNode ** list, int id);
+int isTransaction(transNode * list, int id);
+transNode * getTransaction(transNode * list, int id);
 transNode * createTransaction(int id);
 
 //functions for handling a varList

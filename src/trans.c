@@ -8,7 +8,28 @@
 #include "lock.h"
 #include <stdio.h>
 
+int isTransaction(transNode * list, int id){
+	while( list != NULL ){
+		if(list->id == id)
+			return TRUE;
+		else
+			list = list->next;
+	}
+	return FALSE;
+}
+/*
+ * Returns a transaction pointer
+ */
+transNode * getTransaction(transNode * list, int id){
+	while ( list != NULL ) {
+		if(list->id == id)
+			return list;
+		else
+			list = list->next;
+	}
+	return NULL;
 
+}
 int removeTransaction(transNode ** list, int id){
 	transNode * current;
 	transNode * prev;

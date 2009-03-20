@@ -26,4 +26,5 @@
 
 //functions 
 node * globalMsg ( int cmd, node * arg );
+uint64_t globalId ( int cmd, int arg );
 #endif
