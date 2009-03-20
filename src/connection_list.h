@@ -29,6 +29,7 @@ typedef struct {
 	int socket;
 	int connStatus;
 	int transStatus;
+	int numCmds;
 } connection_t;
 
 typedef struct {

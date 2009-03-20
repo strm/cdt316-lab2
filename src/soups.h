@@ -23,6 +23,8 @@ typedef struct {
 	int endOfMsg;
 	int msgId;
 	int sizeOfData;
+	int owner;
+	int nMiddlewares;
 	command data[MSG_MAX_DATA];
 } message_t;
 

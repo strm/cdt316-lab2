@@ -11,6 +11,28 @@
 #include "listen_thread.h"
 #include <time.h>
 
+
+/* 
+   force_read() is wrapper around the read() call that ensures that count bytes
+   are always read before returning control, unless EOF or an error is
+   detected.
+   Arguments and return values are as for the read() call.
+
+   We *should* use recv() call with MSG_WAITALL flag, but it is not always supported.
+
+ */
+ssize_t force_read(int fd, void *buf, size_t count) {
+	size_t so_far = 0;
+
+	while (so_far < count) {
+		size_t res;
+		res = read(fd, buf + so_far, count - so_far);
+		if (res <= 0) return res;
+		so_far += res;
+	}
+	return so_far;
+}
+
 int ReadMessage(socketfd sock, void *buf, size_t bufsize) {
 	int nBytes;
 	nBytes = recv(sock, buf, bufsize, 0);
@@ -49,18 +71,16 @@ void HandleMessage(message_t *msg, socketfd from, fd_set *fdSet, connections_t *
 void *ListeningThread(void *arg) {
 	fd_set masterFdSet, readFdSet; /* Used by select */
 	fd_set clientSet, mwSet;
-	fd_set clientReadSet, mwReadSet;
-	int i, nBytes;
+	int i, j, nBytes;
 	void * recvBuf;
 	size_t bufSize;
 	socketfd connectionSocket;
 	socketfd listenSocket = CreateSocket(PORT);
 	message_t msg;
-	connections_t middlewareConnections;
-	connections_t clientConnections;
+	connections_t connections;
+	struct timeval selectTimeout;
 	
-	InitConnectionList(&middlewareConnections);
-	InitConnectionList(&clientConnections);
+	InitConnectionList(&connections);
 	
 	if(listen(listenSocket, 1) < 0) {
 		perror("listen: ");
@@ -71,10 +91,13 @@ void *ListeningThread(void *arg) {
 	FD_ZERO(&mwSet);
 	FD_SET(listenSocket, &masterFdSet);
 	
+	selectTimeout.tv_sec = 0;
+	selectTimeout.tv_usec = 0;
+
 	// The thread should wait for new messages when not processing something
 	while(1) {
 		readFdSet = masterFdSet;
-		if(select(FD_SETSIZE, &readFdSet, NULL, NULL, NULL) < 0) {
+		if(select(FD_SETSIZE, &readFdSet, NULL, NULL, &selectTimeout) < 0) {
 			perror("select: ");
 			//TODO: Add error handling here
 		}
@@ -88,20 +111,28 @@ void *ListeningThread(void *arg) {
 						//TODO: Add error handling here
 					}
 					FD_SET(connectionSocket, &masterFdSet);
-					AddConnection(&middlewareConnections, connectionSocket);
+					AddConnection(&connections, connectionSocket);
 				}
+				// Existing connection wishes to send something
 				else {
 					recvBuf = malloc(sizeof(long));
-					if((nBytes = recv(i, recvBuf, sizeof(long))) > 0) {
+					if((nBytes = force_read(i, recvBuf, sizeof(long))) > 0) {
 						// We are about to receive stuff from a middleware
 						if((int)(&recvBuf) == -1) {
+							debug_out(5, "Received pre send request from MW\n");
 							FD_SET(i, &mwSet)
-							FD_CLEAR(i, &masterFdSet);
+							FD_CLR(i, &masterFdSet);
 						}
 						// We are about to receive stuff from a client
 						else {
+							debug_out(5, "Received pre send request from client\n");
+							for(j = 0; j < connections.maxConnections; j++) {
+								if(connections.connection[j].socket == i) {
+									connections.connection[j].numCmds = (int)(&recvBuf);
+								}
+							}
 							FD_SET(i, &clientSet);
-							FD_CLEAR(i, &masterFdSet);
+							FD_CLR(i, &masterFdSet);
 						}
 					}
 					else {
@@ -110,13 +141,34 @@ void *ListeningThread(void *arg) {
 				}
 			}
 		}
-		readFdSet = masterFdSet;
-		if(select(FD_SETSIZE, &readFdSet, NULL, NULL, NULL) < 0) {
+
+		readFdSet = mwSet;
+		if(select(FD_SETSIZE, &readFdSet, NULL, NULL, &selectTimeout) < 0) {
 			perror("select: ");
 			//TODO: Add error handling here
 		}
 		// Iterate over all incoming middleware messages
 		for(i = 0; i < FD_SETSIZE; i++) {
+			if(FDISSET(i, &readFdSet)) {
+				recvBuf = malloc(sizeof(message_t));
+				if((nBytes = force_read(i, recvBuf, sizeof(message_t))) > 0) {
+					HandleMessage((message_t *)msg, i, &mwSet, &connections);
+				}
+			}
+		}
+
+		readFdSet = clientSet;
+		if(select(FD_SETSIZE, &readFdSet, NULL, NULL, &selectTimeout) < 0) {
+			perror("select: ");
+			//TODO: Add error handling here
+		}
+		for(i = 0; i < FD_SETSIZE; i++) {
+			if(FDISSET(i, &readFdSet)) {
+				recvBuf = malloc(sizeof(command));
+				if((nBytes = force_read(i, recvBuf, sizeof(command))) > 0) {
+					//TODO: Add client stuff here
+				}
+			}
 		}
 	}
 	return (void *)0;

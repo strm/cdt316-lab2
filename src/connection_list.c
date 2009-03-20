@@ -44,6 +44,7 @@ int AddConnection(connections_t *list, socketfd sock) {
 		if(list->connection[i].connStatus == STATUS_DISCONNECTED) {
 			list->connection[i].connStatus = STATUS_CONNECTED;
 			list->connection[i].socket = sock;
+			list->connection[i].numCmds = 0;
 			list->nConnections++;
 			
 			if(list->maxConnections - list->nConnections <= CONN_RESIZE_THRESHOLD)
