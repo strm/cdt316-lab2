@@ -30,7 +30,8 @@ uint64_t globalId ( int cmd, int arg ) {
 			ret = _id;
 			_id = arg;
 			break;
-		case 4:
+		case ID_DIFF:
+			ret = arg - _id;
 			break;
 			
 	}

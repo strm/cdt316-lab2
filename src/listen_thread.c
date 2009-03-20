@@ -11,7 +11,7 @@
 #include "listen_thread.h"
 #include <time.h>
 
-int HandleMessage(message_t *msg, socketfd from, fd_set *fdSet, connections_t *list) {
+int HandleMessage(message_t *msg, socketfd from, fd_set *fdSet) {
 	int i, count;
 	int ret = 0;
 	node *newNode;
@@ -197,3 +197,4 @@ void *ListeningThread(void *arg) {
 	}
 	return (void *)0;
 }
+

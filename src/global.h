@@ -12,8 +12,8 @@
 
 #define ID_GET 		(1)
 #define ID_CHECK 	(2)
-#define ID_CHANGE 	(3)
-#define ID_TEST 	(4)
+#define ID_CHANGE	(3)
+#define ID_DIFF 	(4)
 
 #define MSG_GET		(1)
 #define MSG_SETUP	(2)
