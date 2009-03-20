@@ -39,11 +39,15 @@ int ReadMessage(socketfd sock, void *buf, size_t bufsize) {
 	return nBytes;
 }
 
-void HandleMessage(message_t *msg, socketfd from, fd_set *fdSet, connections_t *list) {
+int HandleMessage(message_t *msg, socketfd from, fd_set *fdSet, connections_t *list) {
 	int i, count;
+	int isEof = 0;
 	node_t *newNode;
+
 	
 	/*TODO: Check message id to verify that the message is somewhat expected */
+	if(msg->endOfMsg) isEof = MSG_EOF;
+
 	switch(msg->msgType) {
 		case MW_TRANSACTION:
 		case MW_SYNCHRONIZE:
@@ -66,6 +70,8 @@ void HandleMessage(message_t *msg, socketfd from, fd_set *fdSet, connections_t *
 			close(from);
 			break;
 	}
+
+	return isEof;
 }
 
 void *ListeningThread(void *arg) {
@@ -152,7 +158,9 @@ void *ListeningThread(void *arg) {
 			if(FDISSET(i, &readFdSet)) {
 				recvBuf = malloc(sizeof(message_t));
 				if((nBytes = force_read(i, recvBuf, sizeof(message_t))) > 0) {
-					HandleMessage((message_t *)msg, i, &mwSet, &connections);
+					if(HandleMessage((message_t *)msg, i, &mwSet, &connections) == MSG_EOF) {
+						//TODO: Add socket to master_set and clear from mw_set
+					}
 				}
 			}
 		}

@@ -17,6 +17,7 @@
 #define VALUE_LEN	(768)
 #define MSG_MAX_DATA	(7)
 #define MSG_ME		(-42)
+#define MSG_EOF		(1)
 
 typedef struct {
 	int msgType;

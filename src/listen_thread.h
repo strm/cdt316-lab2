@@ -39,7 +39,7 @@
 #endif
 
 int ReadMessage(int sock, message_t *buf);
-void HandleMessage(message_t *msg, socketfd from, fd_set *fdSet, connections_t *list);
+int HandleMessage(message_t *msg, socketfd from, fd_set *fdSet, connections_t *list);
 void *ListeningThread(void *arg);
 
 #endif /* _LISTEN_THREAD_H_ */
