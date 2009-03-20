@@ -13,7 +13,11 @@
 #include "../framework/hidden/io.h"
 #include "../framework/hidden/msg.h"
 
+#define MW_IDENT	(-1)
+
 void initSocketAddress(struct sockaddr_in *name, char *hostName, unsigned short int port);
 int CreateSocket(unsigned short int port);
+ssize_t mw_send(int fd, void *buf, size_t len);
+ssize_t force_read(int fd, void *buf, size_t count);
 
 #endif /* _MIDDLE_COM_H_ */

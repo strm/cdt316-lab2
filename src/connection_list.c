@@ -1,35 +1,5 @@
 #include "connection_list.h"
 
-
-int ConnectionHandler(int cmd, int csock, connection_t *buf) {
-	static connections_t list;
-	int i;
-
-	switch(cmd) {
-	case LIST_ADD:
-		return AddConnection(&list, csock);
-	case LIST_REMOVE:
-		return RemoveConnection(&list, csock);
-	case LIST_INIT:
-		return InitConnectionList(&list);
-	case LIST_CONNECTION_COUNT:
-		return list.nConnections;
-	case LIST_GET_ENTRY:
-		if(buf != NULL) {
-			for(i = 0; i < list.maxConnections; i++) {
-				if(list.connection[i].socket == csock) {
-					buf->socket = list.connection[i].socket;
-					buf->connStatus = list.connection[i].connStatus;
-					buf->transStatus = list.connection[i].transStatus;
-					return 0;
-				}
-			}
-		}
-		break;
-	}
-	return -1;
-}
-
 /*
 ** Name:	AddConnection
 ** Parameters:	list - connectionlist to add the connection to

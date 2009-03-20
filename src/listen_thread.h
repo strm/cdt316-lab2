@@ -13,16 +13,15 @@
 #include <netdb.h>
 #include <time.h>
 #include "middle_com.h"
+#include "msg_queue.h"
 #include "connection_list.h"
 #include "global.h"
 #include "soups.h"
 
 // Temporary define, these values will be determined elsewhere in the future
 #define PORT			(12345)
-#define VAR_LEN			(255)
-#define MSG_MAX_DATA		(8)
 
-int ReadMessage(int sock, message_t *buf);
+ssize_t force_read(int fd, void *buf, size_t count);
 int HandleMessage(message_t *msg, socketfd from, fd_set *fdSet, connections_t *list);
 void *ListeningThread(void *arg);
 

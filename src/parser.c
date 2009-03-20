@@ -6,6 +6,7 @@
 #include "parser.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #define DB_GLOBAL "DATABASE1"
 
