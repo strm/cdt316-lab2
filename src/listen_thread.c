@@ -39,7 +39,9 @@ int HandleMessage(message_t *msg, socketfd from, fd_set *fdSet) {
 				}
 				else if (msg->owner < msg->msgId - 1) {
 					if(globalId(ID_CHECK, msg->msgId)) {
-						
+						tmp.msgType = MW_SYNCHRONIZE;
+						tmp.endOfMsg = TRUE;
+						// TODO: THIS REQUIRES LOGGING FEATURES!!!
 					}
 					// THIS IS THE DANGEROUS THING WHERE THINGS REALLY WENT TOTALLY WRONG AND WE HAVE TO SYNC THINGS!!!
 				}
