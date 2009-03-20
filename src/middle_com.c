@@ -32,3 +32,38 @@ int CreateSocket(unsigned short int port) {
 	}
 	return sock;
 }
+
+ssize_t mw_send(int fd, void *buf, size_t len) {
+	ssize_t nBytes;
+
+	// Send -1 to inform receiver that the message is from a middleware
+	if(send(fd, (void *)(-1), sizeof(int), 0) < 0) {
+		perror("mw_send:pre - ");
+	}
+	if((nBytes = send(fd, buf, len, 0)) < 0) {
+		perror("mw_send:send - ");
+	}
+	return nBytes;
+}
+
+/* 
+   force_read() is wrapper around the read() call that ensures that count bytes
+   are always read before returning control, unless EOF or an error is
+   detected.
+   Arguments and return values are as for the read() call.
+
+   We *should* use recv() call with MSG_WAITALL flag, but it is not always supported.
+
+ */
+ssize_t force_read(int fd, void *buf, size_t count) {
+  size_t so_far = 0;
+
+  while (so_far < count) {
+		size_t res;
+		res = read(fd, buf + so_far, count - so_far);
+		if (res <= 0) return res;
+		so_far += res;
+	}
+	return so_far;
+}
+

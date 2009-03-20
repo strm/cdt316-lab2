@@ -11,28 +11,6 @@
 #include "listen_thread.h"
 #include <time.h>
 
-
-/* 
-   force_read() is wrapper around the read() call that ensures that count bytes
-   are always read before returning control, unless EOF or an error is
-   detected.
-   Arguments and return values are as for the read() call.
-
-   We *should* use recv() call with MSG_WAITALL flag, but it is not always supported.
-
- */
-ssize_t force_read(int fd, void *buf, size_t count) {
-  size_t so_far = 0;
-
-  while (so_far < count) {
-		size_t res;
-		res = read(fd, buf + so_far, count - so_far);
-		if (res <= 0) return res;
-		so_far += res;
-	}
-	return so_far;
-}
-
 int HandleMessage(message_t *msg, socketfd from, fd_set *fdSet, connections_t *list) {
 	int i, count;
 	int ret = 0;
