@@ -216,3 +216,21 @@ int localParse(varList ** var, varList * trans){
 	}
 	return 1; //TODO WHAT THE ?
 }
+
+/*
+ * MSG_ME
+ */
+int commitParse(transNode trans){
+	varList *iter = (*trans);
+	while(iter != NULL){
+		switch(iter->cmd.op){
+			case ASSIGN:
+				if(replace_entry(iter->cmd.arg2, db, iter,cmd.arg1));
+				else
+					debug_out(5, "replace_entry (failed)\n");
+				break;
+		}
+	}
+
+
+}

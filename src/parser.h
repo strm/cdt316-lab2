@@ -19,4 +19,5 @@ int varListToVarList(varList ** parsed, varList * unparsed);
 int checkLocks(varList * parsed);
 int getUsedVariables(varList ** var, varList * trans);
 int localParse(varList ** var, varList * trans);
+int commitParse(varList ** var);
 #endif

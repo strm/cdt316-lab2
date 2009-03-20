@@ -25,7 +25,7 @@ typedef struct _trans{
 	varList * unparsed;
 	int id;
 	int owner;
-	int acks;
+	connections_t conList;
 	struct _trans * next;
 } transNode;
 
