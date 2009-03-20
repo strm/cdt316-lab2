@@ -40,9 +40,6 @@ typedef struct {
 
 typedef int socketfd;
 
-/* Handles all interaction with the connectionlist */
-int ConnectionHandler(int cmd, int csock);
-
 /* Adds a connection to the first available position */
 int AddConnection(connections_t *list, int sock);
 

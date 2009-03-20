@@ -22,9 +22,9 @@
 
  */
 ssize_t force_read(int fd, void *buf, size_t count) {
-	size_t so_far = 0;
+  size_t so_far = 0;
 
-	while (so_far < count) {
+  while (so_far < count) {
 		size_t res;
 		res = read(fd, buf + so_far, count - so_far);
 		if (res <= 0) return res;
@@ -33,43 +33,59 @@ ssize_t force_read(int fd, void *buf, size_t count) {
 	return so_far;
 }
 
-int ReadMessage(socketfd sock, void *buf, size_t bufsize) {
-	int nBytes;
-	nBytes = recv(sock, buf, bufsize, 0);
-	return nBytes;
-}
-
 int HandleMessage(message_t *msg, socketfd from, fd_set *fdSet, connections_t *list) {
 	int i, count;
 	int ret = 0;
-	node_t *newNode;
+	node *newNode;
+	message_t tmp;
 
+	if(globalId(ID_CHECK, msg->msgId)) {
+		if(msg->endOfMsg) ret = MW_EOF;
 	
-	/*TODO: Check message id to verify that the message is somewhat expected */
-	if(msg->endOfMsg) ret = MSG_EOF;
+		switch(msg->msgType) {
+			case MW_TRANSACTION:
+			case MW_COMMIT:
+			case MW_ACK:
+			case MW_NAK:
+				//TODO: Do we need to synchronize?
+				if((msg->owner > 0) && (msg->owner < msg->msgId)) {
 
-	switch(msg->msgType) {
-		case MW_TRANSACTION:
-		case MW_SYNCHRONIZE:
-		case MW_COMMIT:
-		case MW_ACK:
-		case MW_NAK:
-			newNode = createNode(msg);
-			globalMsg(MSG_LOCK, MSG_NO_ARG);
-			globalMsg(MSG_PUSH, newNode);
-			globalMsg(MSG_UNLOCK, MSG_NO_ARG);
-			break;
-		case MW_CONNECT:
-			/* TODO: this is a reply from middleware we connected to, contains information about sequence number etc. */
-			break;
-		case MW_DISCONNECT:
-			/* TODO: Add mutex to lock the connection list so no bad things might happen */
-			ret = MW_DISCONNECT;
-			RemoveConnection(list, from);
-			if(fdSet != NULL)
-				FD_CLR(from, fdSet);
-			close(from);
-			break;
+				}
+				newNode = createNode(msg);
+				globalMsg(MSG_LOCK, MSG_NO_ARG);
+				globalMsg(MSG_PUSH, newNode);
+				globalMsg(MSG_UNLOCK, MSG_NO_ARG);
+				break;
+			case MW_SYNCHRONIZE:
+				if(globalId(ID_CHECK, msg->msgId)) { // everything seems to be in order
+
+				}
+				else { // Sender seems to have missed something earlier
+					//TODO: We need to send all transactions that the sender has missed
+				}
+				break;
+			case MW_CONNECT:
+				/* TODO: this is a reply from middleware we connected to, contains information about sequence number etc. */
+				break;
+			case MW_DISCONNECT:
+				/* TODO: Add mutex to lock the connection list so no bad things might happen */
+				ret = MW_DISCONNECT;
+				RemoveConnection(list, from);
+				if(fdSet != NULL)
+					FD_CLR(from, fdSet);
+				close(from);
+				break;
+		}
+	}
+	else { // The message id was lower then we expected
+		tmp.msgId = globalId(ID_GET, 0);
+		tmp.msgType = MW_NAK;
+		tmp.endOfMsg = TRUE;
+		tmp.owner = msg->msgId;
+
+		if(send(from, (void *)&tmp, sizeof(message_t), 0) < 0) {
+			perror("send: ");
+		}
 	}
 
 	return ret;
@@ -126,13 +142,13 @@ void *ListeningThread(void *arg) {
 					if((nBytes = force_read(i, recvBuf, sizeof(long))) > 0) {
 						// We are about to receive stuff from a middleware
 						if((int)(&recvBuf) == -1) {
-							debug_out(5, "Received pre send request from MW\n");
-							FD_SET(i, &mwSet)
+							debug_out(5, "Received send request from MW\n");
+							FD_SET(i, &mwSet);
 							FD_CLR(i, &masterFdSet);
 						}
 						// We are about to receive stuff from a client
 						else {
-							debug_out(5, "Received pre send request from client\n");
+							debug_out(5, "Received send request from client\n");
 							for(j = 0; j < connections.maxConnections; j++) {
 								if(connections.connection[j].socket == i) {
 									connections.connection[j].numCmds = (int)(&recvBuf);
@@ -155,26 +171,28 @@ void *ListeningThread(void *arg) {
 			//TODO: Add error handling here
 		}
 		// Iterate over all incoming middleware messages
-		for(i = 0; i < FD_SETSIZE; i++) {
-			if(FDISSET(i, &readFdSet)) {
+		for(i = 0; i < FD_SETSIZE; i++)	{
+			if(FD_ISSET(i, &readFdSet)) {
 				recvBuf = malloc(sizeof(message_t));
 				if((nBytes = force_read(i, recvBuf, sizeof(message_t))) > 0) {
-					if(HandleMessage((message_t *)msg, i, &mwSet, &connections) == MSG_EOF) {
-						//TODO: Add socket to master_set and clear from mw_set
-						FD_SET(i, &masterFdSet);
-						FD_CLR(i, &mwSet);
+					switch(HandleMessage((message_t *)recvBuf, i, &mwSet, &connections)) {
+						case MW_EOF:
+							FD_SET(i, &masterFdSet);
+							FD_CLR(i, &mwSet);
+							break;
 					}
 				}
 			}
 		}
 
+		// Iterate over all incoming client messages
 		readFdSet = clientSet;
 		if(select(FD_SETSIZE, &readFdSet, NULL, NULL, &selectTimeout) < 0) {
 			perror("select: ");
 			//TODO: Add error handling here
 		}
 		for(i = 0; i < FD_SETSIZE; i++) {
-			if(FDISSET(i, &readFdSet)) {
+			if(FD_ISSET(i, &readFdSet)) {
 				recvBuf = malloc(sizeof(command));
 				if((nBytes = force_read(i, recvBuf, sizeof(command))) > 0) {
 					//TODO: Add client stuff here

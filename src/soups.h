@@ -35,6 +35,7 @@ typedef struct {
 	int sizeOfData;
 	int owner;
 	int nMiddlewares;
+	int socket;
 	command data[MSG_MAX_DATA];
 } message_t;
 
