@@ -221,17 +221,50 @@ int localParse(varList ** var, varList * trans){
 /*
  * MSG_ME
  */
-int commitParse(transNode trans){
-	varList *iter = (*trans);
+int commitParse(transNode * trans){
+	varList *iter = (trans->parsed);
 	while(iter != NULL){
 		switch(iter->cmd.op){
 			case ASSIGN:
-				if(replace_entry(iter->cmd.arg2, db, iter,cmd.arg1));
+				if(replace_entry(iter->cmd.arg2, DB_GLOBAL, iter->cmd.arg1));
 				else
 					debug_out(5, "replace_entry (failed)\n");
 				break;
+			case DELETE:
+				if(delete_entry(DB_GLOBAL, iter->cmd.arg1));
+				else
+					debug_out(5, "delete_entry (failed)\n");
+			case ADD:
+				break;
+			case PRINT:
+				//no support here
+				break;
+			case SLEEP:
+				break;
+			case IGNORE:
+				break;
+			case MAGIC:
+				break;
+			case QUIT:
+				break;
+
 		}
 	}
+	iter = trans->unparsed;
+	if(trans->owner == MSG_ME){
+		while(iter != NULL){
+			if(iter->data.op == PRINT){
+				//TODO put into response struct
+				{
+					response rsp;
+					rsp.seq = 0;
+					rsp.is_message = 1;
+					rsp.is_error = 0;
+					strcpy(rsp.result, /*TODO*/);
 
+				}
+			}
+		}
+	}
 
 }
