@@ -41,12 +41,12 @@ int ReadMessage(socketfd sock, void *buf, size_t bufsize) {
 
 int HandleMessage(message_t *msg, socketfd from, fd_set *fdSet, connections_t *list) {
 	int i, count;
-	int isEof = 0;
+	int ret = 0;
 	node_t *newNode;
 
 	
 	/*TODO: Check message id to verify that the message is somewhat expected */
-	if(msg->endOfMsg) isEof = MSG_EOF;
+	if(msg->endOfMsg) ret = MSG_EOF;
 
 	switch(msg->msgType) {
 		case MW_TRANSACTION:
@@ -64,6 +64,7 @@ int HandleMessage(message_t *msg, socketfd from, fd_set *fdSet, connections_t *l
 			break;
 		case MW_DISCONNECT:
 			/* TODO: Add mutex to lock the connection list so no bad things might happen */
+			ret = MW_DISCONNECT;
 			RemoveConnection(list, from);
 			if(fdSet != NULL)
 				FD_CLR(from, fdSet);
@@ -71,7 +72,7 @@ int HandleMessage(message_t *msg, socketfd from, fd_set *fdSet, connections_t *l
 			break;
 	}
 
-	return isEof;
+	return ret;
 }
 
 void *ListeningThread(void *arg) {
@@ -160,6 +161,8 @@ void *ListeningThread(void *arg) {
 				if((nBytes = force_read(i, recvBuf, sizeof(message_t))) > 0) {
 					if(HandleMessage((message_t *)msg, i, &mwSet, &connections) == MSG_EOF) {
 						//TODO: Add socket to master_set and clear from mw_set
+						FD_SET(i, &masterFdSet);
+						FD_CLR(i, &mwSet);
 					}
 				}
 			}
