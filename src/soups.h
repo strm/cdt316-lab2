@@ -19,14 +19,15 @@
 #define MSG_ME		(-42)
 
 // Definitions for middleware communication
-#define MW_DISCONNECT		(0)
-#define MW_CONNECT		(1)
+#define MW_DISCONNECT			(0)
+#define MW_CONNECT				(1)
 #define MW_TRANSACTION		(2)
 #define MW_SYNCHRONIZE		(3)
-#define MW_ACK			(4)
-#define MW_NAK			(5)
-#define MW_COMMIT		(6)
-#define MW_EOF			(7)
+#define MW_ACK						(4)
+#define MW_NAK						(5)
+#define MW_COMMIT					(6)
+#define MW_EOF						(7)
+#define MW_ALIVE					(-888)
 
 typedef struct {
 	int msgType;

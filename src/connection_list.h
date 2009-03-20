@@ -17,6 +17,7 @@
 #define LIST_INIT		(-1)
 #define LIST_CONNECTION_COUNT	(2)
 #define LIST_GET_ENTRY		(3)
+#define LIST_COPY					(4)
 
 // Definitions for connection status
 #define STATUS_DISCONNECTED	(0)
@@ -40,11 +41,19 @@ typedef struct {
 
 typedef int socketfd;
 
+int ConnectionHandler(int cmd, int sock, connection_t *buf);
+
 /* Adds a connection to the first available position */
 int AddConnection(connections_t *list, int sock);
 
+/* Replaces an entry with the information supplied */
+int ReplaceConnection(connections_t *list, connection_t conn);
+
 /* Sets a connection to DISCONNECTED status */
 int RemoveConnection(connections_t *list, int sock);
+
+/* Search for a socket in the connection list */
+connection_t SearchConnection(connections_t *list, int sock);
 
 /* Initialize connection list to default values */
 int InitConnectionList(connections_t *list);

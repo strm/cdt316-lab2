@@ -25,14 +25,30 @@ int HandleMessage(message_t *msg, socketfd from, fd_set *fdSet, connections_t *l
 			case MW_COMMIT:
 			case MW_ACK:
 			case MW_NAK:
-				//TODO: Do we need to synchronize?
-				if((msg->owner > 0) && (msg->owner < msg->msgId)) {
-
+				// Check if we need to synchronize:
+				// if (our ID = their ID - 1): Someone else is doing a transaction, increase our ID to compensate
+				// if (our ID < their ID - 1): We have missed some transaction, lock down and send a sync message to them
+				if(msg->owner == msg->msgId - 1) {
+					if(globalId(ID_CHECK, msg->msgId)) {
+						globalId(ID_CHANGE, msg->owner);
+						newNode = createNode(msg);
+						globalMsg(MSG_LOCK, MSG_NO_ARG);
+						globalMsg(MSG_PUSH, newNode);
+						globalMsg(MSG_UNLOCK, MSG_NO_ARG);
+					}
 				}
-				newNode = createNode(msg);
-				globalMsg(MSG_LOCK, MSG_NO_ARG);
-				globalMsg(MSG_PUSH, newNode);
-				globalMsg(MSG_UNLOCK, MSG_NO_ARG);
+				else if (msg->owner < msg->msgId - 1) {
+					if(globalId(ID_CHECK, msg->msgId)) {
+						
+					}
+					// THIS IS THE DANGEROUS THING WHERE THINGS REALLY WENT TOTALLY WRONG AND WE HAVE TO SYNC THINGS!!!
+				}
+				else {
+					newNode = createNode(msg);
+					globalMsg(MSG_LOCK, MSG_NO_ARG);
+					globalMsg(MSG_PUSH, newNode);
+					globalMsg(MSG_UNLOCK, MSG_NO_ARG);
+				}
 				break;
 			case MW_SYNCHRONIZE:
 				if(globalId(ID_CHECK, msg->msgId)) { // everything seems to be in order
@@ -48,7 +64,7 @@ int HandleMessage(message_t *msg, socketfd from, fd_set *fdSet, connections_t *l
 			case MW_DISCONNECT:
 				/* TODO: Add mutex to lock the connection list so no bad things might happen */
 				ret = MW_DISCONNECT;
-				RemoveConnection(list, from);
+				ConnectionHandler(LIST_REMOVE, from, NULL, NULL);
 				if(fdSet != NULL)
 					FD_CLR(from, fdSet);
 				close(from);
@@ -75,13 +91,11 @@ void *ListeningThread(void *arg) {
 	int i, j, nBytes;
 	void * recvBuf;
 	size_t bufSize;
+	connection_t tmp_conn;
 	socketfd connectionSocket;
 	socketfd listenSocket = CreateSocket(PORT);
 	message_t msg;
-	connections_t connections;
 	struct timeval selectTimeout;
-	
-	InitConnectionList(&connections);
 	
 	if(listen(listenSocket, 1) < 0) {
 		perror("listen: ");
@@ -112,7 +126,7 @@ void *ListeningThread(void *arg) {
 						//TODO: Add error handling here
 					}
 					FD_SET(connectionSocket, &masterFdSet);
-					AddConnection(&connections, connectionSocket);
+					ConnectionHandler(LIST_ADD, connectionSocket, NULL, NULL);
 				}
 				// Existing connection wishes to send something
 				else {
@@ -127,11 +141,14 @@ void *ListeningThread(void *arg) {
 						// We are about to receive stuff from a client
 						else {
 							debug_out(5, "Received send request from client\n");
-							for(j = 0; j < connections.maxConnections; j++) {
-								if(connections.connection[j].socket == i) {
-									connections.connection[j].numCmds = (int)(&recvBuf);
-								}
+							if(ConnectionHandler(LIST_GET_ENTRY, i, &tmp_conn, NULL) == 0) {
+								tmp_conn.numCmds = (int)(&recvBuf);
 							}
+							else {
+								debug_out(5, "Received message from unknown client\n");
+								exit(EXIT_FAILURE);
+							}
+							ConnectionHandler(LIST_REPLACE_ENTRY, 0, &tmp_conn, NULL);
 							FD_SET(i, &clientSet);
 							FD_CLR(i, &masterFdSet);
 						}

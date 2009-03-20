@@ -1,5 +1,42 @@
 #include "connection_list.h"
 
+int ConnectionHandler(int cmd, int sock, connection_t *buf, connections_t *list_buf) {
+	static connections_t list;
+	static char first_run = TRUE;
+	int ret = 0, i;
+
+	if(first_run) {
+		InitConnectionList(&list);
+		first_run = FALSE;
+	}
+
+	switch(cmd) {
+		case LIST_ADD:
+			AddConnection(&list, sock);
+			break;
+		case LIST_REMOVE:
+			RemoveConnection(&list, sock);
+			break;
+		case LIST_CONNECTION_COUNT:
+			ret = list.nConnections;
+			break;
+		case LIST_GET_ENTRY:
+			SearchConnection(&list, sock, buf);
+			break;
+		case LIST_COPY:
+			list_buf->nConnections = list.nConnections;
+			list_buf->maxConnections = list.maxConnections;
+			list_buf->connection = (connections_t *)malloc(sizeof(connection_t) * list.maxConnections);
+			for(i = 0; i < list_buf->maxConnections; i++)
+				list_buf->connection[i] = list.connection[i];
+			break;
+		case LIST_REPLACE_ENTRY:
+			ReplaceConnection(&list, buf);
+			break;
+	}
+	return ret;
+}
+
 /*
 ** Name:	AddConnection
 ** Parameters:	list - connectionlist to add the connection to
@@ -26,6 +63,20 @@ int AddConnection(connections_t *list, socketfd sock) {
 	return -1;
 }
 
+int ReplaceConnection(connections_t *list, connection_t *src) {
+	int i;
+	int ret = 0;
+
+	for(i = 0; i < list->maxConnections; i++) {
+		if(list->connection[i].socket == src->socket) {
+			list->connection[i] = *src;
+		}
+		else
+			ret = -1;
+	}
+	return ret;
+}
+
 /*
 ** Name:	RemoveConnection
 ** Parameters:	list - connectionlist to remove the connection from
@@ -40,13 +91,27 @@ int RemoveConnection(connections_t *list, socketfd sock) {
 		if(list->connection[i].socket == sock) {
 			list->connection[i].connStatus = STATUS_DISCONNECTED;
 			list->nConnections--;
-			printf("Removed connection from %d in connection list\n", sock);
 			return 0;
 		}
 	}
 	return -1;
 }
 
+int SearchConnection(connections_t *list, int sock, connection_t *buf) {
+	int i, res;
+	
+	for(i = 0; i < list->maxConnections; i++) {
+		if(list->connection[i].socket == sock) {
+			*buf = *list->connection[i];
+			res = 0;
+		}
+		else {
+			buf = NULL;
+			res = -1;
+		}
+	}
+	return res;
+}
 /*
 ** Name:	InitConnectionList
 ** Parameters:	list		- connectionlist to initialize
