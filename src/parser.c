@@ -56,26 +56,26 @@ int getUsedVariables(varList ** var, varList * trans){
  * Get all variables current value from db
  */
 int getFromDB(varList ** var){
-	varList * iter = (*var);
-	char * ret;
-	int nRet = 1;
-	
-	while( iter != NULL ){
-		if(is_entry(iter->data.arg1)){
-			if(!get_entry(ret, DB_GLOBAL, iter->data.arg1)){
-				printf("No value retrived for %s\n", iter->data.arg1);
-				nRet--;
-			}
-			else{
-				//sucess
-				printf("Retrived { %s } for %s", ret, iter->data.arg1);
-				strcpy(iter->data.arg2, ret);
-				ret = "\0";
-			}
-		}
-		iter = iter->next;
-	}
-	return nRet;
+								varList * iter = (*var);
+								char * ret;
+								int nRet = 1;
+
+								while( iter != NULL ){
+																if(is_entry(iter->data.arg1)){
+																								if(!get_entry(ret, DB_GLOBAL, iter->data.arg1)){
+																																printf("No value retrived for %s\n", iter->data.arg1);
+																																nRet--;
+																								}
+																								else{
+																																//sucess
+																																printf("Retrived { %s } for %s", ret, iter->data.arg1);
+																																strcpy(iter->data.arg2, ret);
+																																ret = "\0";
+																								}
+																}
+																iter = iter->next;
+								}
+								return nRet;
 }	
 
 /**
@@ -219,10 +219,11 @@ int localParse(varList ** var, varList * trans){
 }
 
 /*
- * MSG_ME
+ * Commits a parsed transaction to the database and sends any print responses to the client
  */
 int commitParse(transNode * trans){
 	varList *iter = (trans->parsed);
+	int nRsp = 0;
 	while(iter != NULL){
 		switch(iter->cmd.op){
 			case ASSIGN:
@@ -250,21 +251,59 @@ int commitParse(transNode * trans){
 
 		}
 	}
-	iter = trans->unparsed;
-	if(trans->owner == MSG_ME){
-		while(iter != NULL){
-			if(iter->data.op == PRINT){
-				//TODO put into response struct
-				{
-					response rsp;
-					rsp.seq = 0;
-					rsp.is_message = 1;
-					rsp.is_error = 0;
-					strcpy(rsp.result, /*TODO*/);
+}
+/*
+	* Finds all print commands and send them to the client if owner of the transaction
+	* 0 on error
+	* 1 on suceess?
+	* -1 on nothing done
+	*/
+void sendResponse(transNode * trans){
+								iter = trans->unparsed;
+								if(trans->owner == MSG_ME && iter != NULL){
+																//get number of responses needed
+																while(iter != NULL){
+																								if(iter->data.op == PRINT)
+																																nRsp++;
+																								iter = iter->next; 
+																}
+																iter = trans->unparsed;
+																if(nRsp > 0){
+																								/**
+																									* Send amount of responses to client
+																									*/
+																								if(send(trans->socket, &nRsp, sizeof(int), 0) == -1){
+																																debug_out(5, "send to client (failed)\n");
+																																return 0;
+																								}
 
-				}
-			}
-		}
-	}
+																								else{
+																																while(iter != NULL){
+																																								if(iter->data.op == PRINT){
+																																																{
+																																																								response rsp;
+																																																								rsp.seq = 0;
+																																																								rsp.is_message = 1;
+																																																								rsp.is_error = 0;
+																																																								//check what type of print
+																																																								if(is_entry(iter->data.arg2))
+																																																																strcpy(rsp.result, varListGetValue(trans->parsed));
+																																																								else if(is_literal(iter->data.arg2))
+																																																																strcpy(rsp.resul, iter->data.arg2);
+																																																								else{
+																																																																debug_out(5, "response (faileD) not a value or an entry\n");
+																																																																return 0;
+																																																								}
+																																																								if(send(trans->socket, &rsp, sizeof(response), 0) == -1)
+																																																																debug_out(5, "Send to clint (failed)\n");
 
+																																																}
+																																								}
+																																}
+																								}
+																}
+								}
+								else
+																return -1
+								return 1;
 }
