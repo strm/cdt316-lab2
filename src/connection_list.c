@@ -2,15 +2,21 @@
 
 int ConnectionHandler(int cmd, int sock, connection_t *buf, connections_t *list_buf) {
 	static connections_t list;
-	static char first_run = TRUE;
+	static char first_run = 1;
 	int ret = 0, i;
 
 	if(first_run) {
 		InitConnectionList(&list);
-		first_run = FALSE;
+		first_run = 0;
 	}
 
 	switch(cmd) {
+		case LIST_SET_MIDDLEWARE:
+			SetConnectionType(&list, sock, TYPE_MIDDLEWARE);
+			break;
+		case LIST_SET_CLIENT:
+			SetConnectionType(&list, sock, TYPE_CLIENT);
+			break;
 		case LIST_ADD:
 			AddConnection(&list, sock);
 			break;
@@ -37,6 +43,17 @@ int ConnectionHandler(int cmd, int sock, connection_t *buf, connections_t *list_
 	return ret;
 }
 
+int SetConnectionType(connections_t *list, socketfd sock, int type) {
+	int i, ret = -1;
+
+	for(i = 0; i < list->maxConnections; i++) {
+		if(list->connection[i].socket == sock) {
+			list->connection[i].type = type;
+			ret = 0;
+		}
+	}
+	return ret;
+}
 /*
 ** Name:	AddConnection
 ** Parameters:	list - connectionlist to add the connection to
@@ -90,6 +107,7 @@ int RemoveConnection(connections_t *list, socketfd sock) {
 	for(i = 0; i < list->maxConnections; i++) {
 		if(list->connection[i].socket == sock) {
 			list->connection[i].connStatus = STATUS_DISCONNECTED;
+			list->connection[i].type = TYPE_UNKNOWN;
 			list->nConnections--;
 			return 0;
 		}
@@ -102,7 +120,7 @@ int SearchConnection(connections_t *list, int sock, connection_t *buf) {
 	
 	for(i = 0; i < list->maxConnections; i++) {
 		if(list->connection[i].socket == sock) {
-			*buf = *list->connection[i];
+			*buf = list->connection[i];
 			res = 0;
 		}
 		else {
@@ -126,6 +144,7 @@ int InitConnectionList(connections_t *list) {
 	for(i = 0; i < CONN_DEFAULT_LIMIT; i++) {
 		list->connection[i].socket = -1;
 		list->connection[i].connStatus = STATUS_DISCONNECTED;
+		list->connection[i].type = TYPE_UNKNOWN;
 	}
 	
 	return 0;
@@ -143,6 +162,7 @@ int ResizeConnectionList(connections_t *list) {
 	list->connection = realloc(list->connection, sizeof(connection_t) * list->maxConnections);
 	while(oldMax < list->maxConnections) {
 		list->connection[oldMax].connStatus = STATUS_DISCONNECTED;
+		list->connection[oldMax].type = TYPE_UNKNOWN;
 		list->connection[oldMax].socket =  -1;
 		oldMax++;
 	}

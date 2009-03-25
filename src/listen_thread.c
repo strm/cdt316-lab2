@@ -172,7 +172,7 @@ void *ListeningThread(void *arg) {
 			if(FD_ISSET(i, &readFdSet)) {
 				recvBuf = malloc(sizeof(message_t));
 				if((nBytes = force_read(i, recvBuf, sizeof(message_t))) > 0) {
-					switch(HandleMessage((message_t *)recvBuf, i, &mwSet, &connections)) {
+					switch(HandleMessage((message_t *)recvBuf, i, &mwSet)) {
 						case MW_EOF:
 							FD_SET(i, &masterFdSet);
 							FD_CLR(i, &mwSet);

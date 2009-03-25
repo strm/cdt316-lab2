@@ -6,30 +6,38 @@
 #include <stdint.h>
 
 // Initial maximum number of connections
-#define CONN_DEFAULT_LIMIT	(10)
+#define CONN_DEFAULT_LIMIT		(10)
 // How many connections to add to the connection list when expanding
-#define CONN_GROW_FACTOR	(CONN_DEFAULT_LIMIT)
+#define CONN_GROW_FACTOR			(CONN_DEFAULT_LIMIT)
 // How many emtpy slots before expanding the connection list
 #define CONN_RESIZE_THRESHOLD	(2)
 
-#define LIST_ADD 		(0)
-#define LIST_REMOVE		(1)
-#define LIST_INIT		(-1)
+#define LIST_ADD 							(0)
+#define LIST_REMOVE						(1)
+#define LIST_INIT							(-1)
 #define LIST_CONNECTION_COUNT	(2)
-#define LIST_GET_ENTRY		(3)
-#define LIST_COPY					(4)
+#define LIST_GET_ENTRY				(3)
+#define LIST_COPY							(4)
+#define LIST_REPLACE_ENTRY		(5)
+#define LIST_SET_CLIENT				(6)
+#define LIST_SET_MIDDLEWARE		(7)
 
 // Definitions for connection status
-#define STATUS_DISCONNECTED	(0)
-#define STATUS_CONNECTED	(1)
-#define STATUS_PENDING_ACK	(2)
-#define STATUS_ACKED		(3)
-#define STATUS_NONE		(4)
+#define STATUS_DISCONNECTED		(0)
+#define STATUS_CONNECTED			(1)
+#define STATUS_PENDING_ACK		(2)
+#define STATUS_ACKED					(3)
+#define STATUS_NONE						(4)
+
+#define TYPE_CLIENT						(2)
+#define TYPE_MIDDLEWARE				(1)
+#define TYPE_UNKNOWN					(0)
 
 typedef struct {
 	int socket;
 	int connStatus;
 	int transStatus;
+	int type;
 	int numCmds;
 } connection_t;
 
@@ -41,19 +49,19 @@ typedef struct {
 
 typedef int socketfd;
 
-int ConnectionHandler(int cmd, int sock, connection_t *buf);
+int ConnectionHandler(int cmd, int sock, connection_t *buf, connections_t *list_buf);
 
 /* Adds a connection to the first available position */
 int AddConnection(connections_t *list, int sock);
 
 /* Replaces an entry with the information supplied */
-int ReplaceConnection(connections_t *list, connection_t conn);
+int ReplaceConnection(connections_t *list, connection_t *src);
 
 /* Sets a connection to DISCONNECTED status */
 int RemoveConnection(connections_t *list, int sock);
 
 /* Search for a socket in the connection list */
-connection_t SearchConnection(connections_t *list, int sock);
+int SearchConnection(connections_t *list, int sock, connection_t *buf);
 
 /* Initialize connection list to default values */
 int InitConnectionList(connections_t *list);
