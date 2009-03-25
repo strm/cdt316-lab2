@@ -71,7 +71,8 @@ void * worker_thread ( void * arg ){
 					debug_out(5, "Failed to add transaction to list\n");
 				else{
 					trans->owner = tmp->msg.owner;
-					//TODO COPY FROM LIST TODO trans->acks = tmp->msg.nMiddlewares;
+					if(ConnectionHandler(LIST_COPY, 0, NULL, &trans->conList) != 0)
+						debug_out(5, "Error\n");
 					trans->id = tmp->msg.msgId;
 					trans->socket = tmp->msg.socket;
 				}
