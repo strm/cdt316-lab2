@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 
 #define DB_GLOBAL "DATABASE1"
 
@@ -19,7 +21,7 @@ int getUsedVariables(varList ** var, varList * trans){
 	printf("getUSedVariables started\n");
 	while ( trans != NULL ){
 		//check all args
-		if((trans->data.op != 3 || trans->data.op >= 5)){
+		if(trans->data.op <= 6){
 			if(is_entry(trans->data.arg1))
 				if(!varListFind(trans->data.arg1, (*var))){
 					ret++;
@@ -56,26 +58,26 @@ int getUsedVariables(varList ** var, varList * trans){
  * Get all variables current value from db
  */
 int getFromDB(varList ** var){
-								varList * iter = (*var);
-								char * ret;
-								int nRet = 1;
+	varList * iter = (*var);
+	char * ret;
+	int nRet = 1;
 
-								while( iter != NULL ){
-																if(is_entry(iter->data.arg1)){
-																								if(!get_entry(ret, DB_GLOBAL, iter->data.arg1)){
-																																printf("No value retrived for %s\n", iter->data.arg1);
-																																nRet--;
-																								}
-																								else{
-																																//sucess
-																																printf("Retrived { %s } for %s", ret, iter->data.arg1);
-																																strcpy(iter->data.arg2, ret);
-																																ret = "\0";
-																								}
-																}
-																iter = iter->next;
-								}
-								return nRet;
+	while( iter != NULL ){
+		if(is_entry(iter->data.arg1)){
+			if(!get_entry(ret, DB_GLOBAL, iter->data.arg1)){
+				printf("No value retrived for %s\n", iter->data.arg1);
+				nRet--;
+			}
+			else{
+				//sucess
+				printf("Retrived { %s } for %s", ret, iter->data.arg1);
+				strcpy(iter->data.arg2, ret);
+				ret = "\0";
+			}
+		}
+		iter = iter->next;
+	}
+	return nRet;
 }	
 
 /**
@@ -103,7 +105,7 @@ int localParse(varList ** var, varList * trans){
 								printf("ASSIGN %s %s (FAIL)\n", tmp.arg1, value);
 							value = NULL;
 						}
-						
+
 					}
 					else{
 						//assume we have a actual value in arg2
@@ -112,7 +114,7 @@ int localParse(varList ** var, varList * trans){
 						else
 							printf("ASSIGN %s %s (FAIL)\n", tmp.arg1, tmp.arg2);
 					}
-				
+
 				}
 				else
 					printf("ASSIGN %s ? (FAIL)\n", tmp.arg1);
@@ -158,7 +160,7 @@ int localParse(varList ** var, varList * trans){
 					else
 						printf("ADD %s %s %s (FAIL)\n", tmp.arg1, tmp.arg2, tmp.arg3);
 
-			}
+				}
 				else
 					printf("ADD %s ? ? (FAIL)\n", tmp.arg1);
 				break;
@@ -200,7 +202,7 @@ int localParse(varList ** var, varList * trans){
 			case NOCMD:
 				printf("NO CMD\n");
 				break;
-				
+
 		}
 		iter = iter->next;
 	}
@@ -223,16 +225,15 @@ int localParse(varList ** var, varList * trans){
  */
 int commitParse(transNode * trans){
 	varList *iter = (trans->parsed);
-	int nRsp = 0;
 	while(iter != NULL){
-		switch(iter->cmd.op){
+		switch(iter->data.op){
 			case ASSIGN:
-				if(replace_entry(iter->cmd.arg2, DB_GLOBAL, iter->cmd.arg1));
+				if(replace_entry(iter->data.arg2, DB_GLOBAL, iter->data.arg1));
 				else
 					debug_out(5, "replace_entry (failed)\n");
 				break;
 			case DELETE:
-				if(delete_entry(DB_GLOBAL, iter->cmd.arg1));
+				if(delete_entry(DB_GLOBAL, iter->data.arg1));
 				else
 					debug_out(5, "delete_entry (failed)\n");
 			case ADD:
@@ -248,9 +249,11 @@ int commitParse(transNode * trans){
 				break;
 			case QUIT:
 				break;
-
+			case NOCMD:
+				break;
 		}
 	}
+	return 1;
 }
 /*
 	* Finds all print commands and send them to the client if owner of the transaction
@@ -258,52 +261,51 @@ int commitParse(transNode * trans){
 	* 1 on suceess?
 	* -1 on nothing done
 	*/
-void sendResponse(transNode * trans){
-								iter = trans->unparsed;
-								if(trans->owner == MSG_ME && iter != NULL){
-																//get number of responses needed
-																while(iter != NULL){
-																								if(iter->data.op == PRINT)
-																																nRsp++;
-																								iter = iter->next; 
-																}
-																iter = trans->unparsed;
-																if(nRsp > 0){
-																								/**
-																									* Send amount of responses to client
-																									*/
-																								if(send(trans->socket, &nRsp, sizeof(int), 0) == -1){
-																																debug_out(5, "send to client (failed)\n");
-																																return 0;
-																								}
+int sendResponse(transNode * trans){
+	varList * iter = trans->unparsed;
+	response rsp;
+	int nRsp = 0;
+	if(trans->owner == MSG_ME && iter != NULL){
+		//get number of responses needed
+		while(iter != NULL){
+			if(iter->data.op == PRINT)
+				nRsp++;
+			iter = iter->next; 
+		}
+		iter = trans->unparsed;
+		if(nRsp > 0){
+			/**
+			 * Send amount of responses to client
+			 */
+			if(send(trans->socket, &nRsp, sizeof(int), 0) == -1){
+				debug_out(5, "send to client (failed)\n");
+				return 0;
+			}
 
-																								else{
-																																while(iter != NULL){
-																																								if(iter->data.op == PRINT){
-																																																{
-																																																								response rsp;
-																																																								rsp.seq = 0;
-																																																								rsp.is_message = 1;
-																																																								rsp.is_error = 0;
-																																																								//check what type of print
-																																																								if(is_entry(iter->data.arg2))
-																																																																strcpy(rsp.result, varListGetValue(trans->parsed));
-																																																								else if(is_literal(iter->data.arg2))
-																																																																strcpy(rsp.resul, iter->data.arg2);
-																																																								else{
-																																																																debug_out(5, "response (faileD) not a value or an entry\n");
-																																																																return 0;
-																																																								}
-																																																								if(send(trans->socket, &rsp, sizeof(response), 0) == -1)
-																																																																debug_out(5, "Send to clint (failed)\n");
+			else{
+				while(iter != NULL){
+					if(iter->data.op == PRINT){
+						rsp.seq = 0;
+						rsp.is_message = 1;
+						rsp.is_error = 0;
+						//check what type of print
+						if(is_entry(iter->data.arg2))
+							strcpy(rsp.result, varListGetValue(trans->parsed, iter->data.arg2));
+						else if(is_literal(iter->data.arg2))
+							strcpy(rsp.result, iter->data.arg2);
+						else{
+							debug_out(5, "response (faileD) not a value or an entry\n");
+							return 0;
+						}
+						if(send(trans->socket, &rsp, sizeof(response), 0) == -1)
+							debug_out(5, "Send to clint (failed)\n");
 
-																																																}
-																																								}
-																																}
-																								}
-																}
-								}
-								else
-																return -1
-								return 1;
+					}
+				}
+			}
+		}
+	}
+	else
+		return -1;
+	return 1;
 }
