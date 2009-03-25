@@ -13,6 +13,8 @@ int LogHandler(char cmd, int id, varList **commands) {
 			break;
 		case LOG_READ:
 			break;
+		case LOG_READ_NEXT:
+			break;
 		case LOG_LAST_ID:
 			break;
 		case LOG_CHECK_ID:

@@ -51,6 +51,9 @@ typedef int socketfd;
 
 int ConnectionHandler(int cmd, int sock, connection_t *buf, connections_t *list_buf);
 
+/* Sets the connection type (MW or client) in a connection */
+int SetConnectionType(connections_t *list, socketfd sock, int type);
+
 /* Adds a connection to the first available position */
 int AddConnection(connections_t *list, int sock);
 

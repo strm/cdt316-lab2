@@ -107,7 +107,7 @@ int RemoveConnection(connections_t *list, socketfd sock) {
 	for(i = 0; i < list->maxConnections; i++) {
 		if(list->connection[i].socket == sock) {
 			list->connection[i].connStatus = STATUS_DISCONNECTED;
-			list->connection[i].type = TYPE_UNKNOWN;
+			list->connection[i].type = TYPE_MIDDLEWARE;
 			list->nConnections--;
 			return 0;
 		}
@@ -144,7 +144,7 @@ int InitConnectionList(connections_t *list) {
 	for(i = 0; i < CONN_DEFAULT_LIMIT; i++) {
 		list->connection[i].socket = -1;
 		list->connection[i].connStatus = STATUS_DISCONNECTED;
-		list->connection[i].type = TYPE_UNKNOWN;
+		list->connection[i].type = TYPE_MIDDLEWARE;
 	}
 	
 	return 0;
@@ -162,7 +162,7 @@ int ResizeConnectionList(connections_t *list) {
 	list->connection = realloc(list->connection, sizeof(connection_t) * list->maxConnections);
 	while(oldMax < list->maxConnections) {
 		list->connection[oldMax].connStatus = STATUS_DISCONNECTED;
-		list->connection[oldMax].type = TYPE_UNKNOWN;
+		list->connection[oldMax].type = TYPE_MIDDLEWARE;
 		list->connection[oldMax].socket =  -1;
 		oldMax++;
 	}
