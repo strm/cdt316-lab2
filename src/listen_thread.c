@@ -143,6 +143,7 @@ void *ListeningThread(void *arg) {
 						// We are about to receive stuff from a client
 						else {
 							debug_out(5, "Received send request from client\n");
+							ConnectionHandler(LIST_SET_CLIENT, i, NULL, NULL);
 							if(ConnectionHandler(LIST_GET_ENTRY, i, &tmp_conn, NULL) == 0) {
 								tmp_conn.numCmds = (int)(&recvBuf);
 							}
