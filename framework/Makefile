@@ -11,11 +11,11 @@ CFLAGS = -pipe -Wall -g -DLINUX -I. -I../. -Ihidden/.
 OBJSERVER = hidden/server.o hidden/io.o hidden/db.o hidden/msg.o
 OBJMIDDLE = middle.o hidden/middle-support.o hidden/io.o hidden/msg.o
 OBJFRONTEND = hidden/frontend.o hidden/io.o hidden/msg.o
-
+OBJFRONTEND2 = hidden/frontend2.o hidden/io.o hidden/msg.o
 # Linux link libraries
 LIBS = -L. -lgdbm #-lgdbm_compat
 
-PROGRAMS = dbserver middle frontend
+PROGRAMS = dbserver middle frontend frontend2
 
 all: ${PROGRAMS}
 
@@ -31,6 +31,8 @@ middle: ${OBJMIDDLE}
 frontend: ${OBJFRONTEND}
 	${CC} -o $@ ${OBJFRONTEND} ${LFLAGS} ${LIBS}
 
+frontend2: ${OBJFRONTEND2}
+	${CC} -o $@ ${OBJFRONTEND2} ${LFLAGS} ${LIBS}
 hidden/server.o: hidden/server.c  hidden/message.h hidden/io.h hidden/db.h nameserver.h hidden/msg.h cmd.h middle-support.h Makefile
 
 middle.o: middle.c middle-support.h cmd.h Makefile
@@ -39,6 +41,7 @@ hidden/middle-support.o: hidden/middle-support.c middle-support.h cmd.h nameserv
 
 hidden/frontend.o: hidden/frontend.c hidden/io.h nameserver.h hidden/msg.h Makefile hidden/io.h Makefile
 
+hidden/frontend.o: hidden/frontend2.c hidden/io.h nameserver.h hidden/msg.h Makefile hidden/io.h Makefile
 hidden/db.o: hidden/db.c hidden/db.h Makefile
 
 hidden/io.o: hidden/io.c hidden/io.h Makefile
