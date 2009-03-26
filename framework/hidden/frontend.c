@@ -71,7 +71,7 @@ int main(int argc, char **argv) {
   long num_lines = 0;
   int res;
 
-  set_severity(2);
+  set_severity(0);
 
   while (myargv[0] && myargv[0][0] == '-') {
     if (strcmp(myargv[0], "-d") == 0) {

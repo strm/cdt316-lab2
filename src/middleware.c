@@ -220,12 +220,15 @@ int main(void) {
 	
 	InitConnectionList(&connList);
 
-	set_severity(4);
+	set_severity(1);
 	
 	debug_out(5, "Creating listening thread\n");
 	fflush(stdout);
+	mw_sock = start_middleware("MIDDLEWARE");
 	pthread_create(&listenThread, NULL, ListeningThread, (void *)NULL);
-	pthread_create(&workThread, NULL, worker_thread, (void *)1);
+	pthread_create(&workThread, NULL, worker_thread, (void *)mw_sock);
+	printf("hej\n");
+	/*
 	while(1) {
 		debug_out(5, "Starting middleware\n");
 		mw_sock = start_middleware("MIDDLEWARE");
@@ -246,6 +249,7 @@ int main(void) {
 		stop_middleware(mw_sock);
 		sleep(5);
 	}
+	*/
 	pthread_join(workThread, NULL);
 	pthread_join(listenThread, NULL);
 	return 0;

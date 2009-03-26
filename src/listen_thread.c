@@ -98,7 +98,8 @@ void *ListeningThread(void *arg) {
 	socketfd listenSocket = CreateSocket(PORT);
 	message_t msg;
 	struct timeval selectTimeout;
-	
+	debug_out(5, "Welcome to listenThread\n");
+
 	if(listen(listenSocket, 1) < 0) {
 		perror("listen: ");
 		//TODO: Add error handling here
@@ -119,8 +120,9 @@ void *ListeningThread(void *arg) {
 			//TODO: Add error handling here
 		}
 		for(i = 0; i < FD_SETSIZE; i++) {
-			if(FD_ISSET(i, &readFdSet)) {
+			if(FD_ISSET(i, &readFdSet)) {  
 				// New connection incoming
+				debug_out(5, "New connection\n");
 				if(i == listenSocket) {
 					connectionSocket = accept(listenSocket, NULL, NULL);
 					if(connectionSocket < 0) {
@@ -158,6 +160,7 @@ void *ListeningThread(void *arg) {
 					}
 					else {
 						/* TODO: Add error handling */
+						debug_out(5, "TODO error handling\n");
 					}
 				}
 			}
@@ -194,6 +197,7 @@ void *ListeningThread(void *arg) {
 				recvBuf = malloc(sizeof(command));
 				if((nBytes = force_read(i, recvBuf, sizeof(command))) > 0) {
 					//TODO: Add client stuff here
+					printf("CMD: %s ", ((command *)recvBuf)->arg1);
 				}
 			}
 		}

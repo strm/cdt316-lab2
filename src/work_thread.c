@@ -39,6 +39,7 @@ void * worker_thread ( void * arg ){
 	transNode * transList;
 	transNode * trans; //TODO does stuff get lost?
 	message_t newMsg;
+		debug_out(5,"Welcome to worker_thread");
 	while(1){
 		/*
 		 * Read message queue
@@ -46,26 +47,29 @@ void * worker_thread ( void * arg ){
 		if ( globalMsg( MSG_LOCK, MSG_NO_ARG ) == NULL ){
 			//locked
 			tmp = globalMsg( MSG_POP, MSG_NO_ARG );
-			if( tmp == NULL )
+			if( tmp == NULL ){
+				globalMsg( MSG_UNLOCK, MSG_NO_ARG );
 				continue;
-			else if(isTransaction(transList, tmp->msg.msgId))
-				trans = getTransaction(transList, tmp->msg.msgId);
-			else if(tmp->msg.msgType == MW_TRANSACTION){
-				//create new transaction
-				trans = createTransaction( globalId(ID_GET, 0 ));
-				if(!addTransaction( &transList, trans))
-					debug_out(5, "Failed to add transaction to list\n");
-				else{
-					trans->owner = tmp->msg.owner;
-					if(ConnectionHandler(LIST_COPY, 0, NULL, &trans->conList) != 0)
-						debug_out(5, "Error\n");
-					trans->id = tmp->msg.msgId;
-					trans->socket = tmp->msg.socket;
+			}
+			else{
+				debug_out(5, "Message recived\n");
+				if(isTransaction(transList, tmp->msg.msgId))
+					trans = getTransaction(transList, tmp->msg.msgId);
+				else if(tmp->msg.msgType == MW_TRANSACTION){
+					//create new transaction
+					debug_out(5, "Creating new transaction\n");
+					trans = createTransaction( globalId(ID_GET, 0 ));
+					if(!addTransaction( &transList, trans))
+						debug_out(5, "Failed to add transaction to list\n");
+					else{
+						trans->owner = tmp->msg.owner;
+						if(ConnectionHandler(LIST_COPY, 0, NULL, &trans->conList) != 0)
+							debug_out(5, "Error\n");
+						trans->id = tmp->msg.msgId;
+						trans->socket = tmp->msg.socket;
+					}
 				}
 			}
-			else //do nothing
-				continue;
-	
 			switch(tmp->msg.msgType){
 				case MW_TRANSACTION:
 					switch(trans->owner){
