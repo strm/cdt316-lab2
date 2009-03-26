@@ -28,6 +28,7 @@ int CreateSocket(unsigned short int port) {
 	sockName.sin_port = htons(port);
 	sockName.sin_addr.s_addr = htonl(INADDR_ANY);
 	if(bind(sock, (struct sockaddr*)&sockName, sizeof(sockName)) < 0) {
+		debug_out(10, "Bind failed in CreateSocket\n");
 		//TODO: Add error handling here
 	}
 	return sock;

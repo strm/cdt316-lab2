@@ -95,10 +95,14 @@ void *ListeningThread(void *arg) {
 	size_t bufSize;
 	connection_t tmp_conn;
 	socketfd connectionSocket;
-	socketfd listenSocket = CreateSocket(PORT);
+	//socketfd listenSocket = CreateSocket(PORT);
+	socketfd listenSocket;
 	message_t msg;
 	struct timeval selectTimeout;
 	debug_out(5, "Welcome to listenThread\n");
+
+	debug_out(10, "Attempting to CreateSocket()\n");
+	listenSocket = CreateSocket(PORT);
 
 	if(listen(listenSocket, 1) < 0) {
 		perror("listen: ");
@@ -110,12 +114,12 @@ void *ListeningThread(void *arg) {
 	FD_SET(listenSocket, &masterFdSet);
 	
 	selectTimeout.tv_sec = 0;
-	selectTimeout.tv_usec = 0;
+	selectTimeout.tv_usec = -1;
 
 	// The thread should wait for new messages when not processing something
 	while(1) {
 		readFdSet = masterFdSet;
-		if(select(FD_SETSIZE, &readFdSet, NULL, NULL, &selectTimeout) < 0) {
+		if(select(FD_SETSIZE, &readFdSet, NULL, NULL, NULL) < 0) {
 			perror("select: ");
 			//TODO: Add error handling here
 		}

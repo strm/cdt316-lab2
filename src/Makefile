@@ -9,7 +9,7 @@ LIBS	= -L. -lgdbm -lpthread
 CFLAGS 	= -c -Wall -I. -I../framework -I../framework/hidden
 
 OBJMIDDLE = ../framework/middle.o ../framework/hidden/middle-support.o ../framework/hidden/io.o ../framework/hidden/msg.o parser.o global.o lock.o trans.o msg_queue.o
-OBJMIDDLEWARE = middleware.o ../framework/hidden/middle-support.o ../framework/hidden/io.o ../framework/hidden/msg.o middle_com.o listen_thread.o connection_list.o global.o lock.o trans.o msg_queue.o parser.o work_thread.o
+OBJMIDDLEWARE = middleware.o ../framework/hidden/middle-support.o ../framework/hidden/io.o ../framework/hidden/msg.o middle_com.o listen_thread.o connection_list.o global.o lock.o trans.o msg_queue.o parser.o work_thread.o communication.o
 
 all: $(PROG)
 
@@ -17,6 +17,9 @@ global.o: global.c
 	$(CC) $(CFLAGS) -o global.o global.c
 work_thread.o: work_thread.c
 	$(CC) $(CFLAGS) -o work_thread.o work_thread.c
+communication.o: communication.c
+	$(CC) $(CFLAGS) -o communication.o communication.c
+
 msg_queue.o: msg_queue.c
 	$(CC) $(CFLAGS) -o msg_queue.o msg_queue.c
 lock.o: lock.c lock.h
@@ -31,8 +34,8 @@ connection_list.o: connection_list.c connection_list.h
 	$(CC) $(CFLAGS) -o connection_list.o connection_list.c
 middle_com.o: middle_com.c middle_com.h
 	$(CC) $(CFLAGS) -o middle_com.o middle_com.c
-middleware.o: middleware.c
-	${CC} -o middleware.o middleware.c ${CFLAGS}
+middleware.o: middle-main.c
+	${CC} -o middleware.o middle-main.c ${CFLAGS}
 ../framwork/hidden/middle-support.o: ../framework/hidden/middle-support.c
 	${CC} ${CFLAGS} -o ../framework/hidden/middle-support.o ../framework/hidden/middle-support.c
 ../framework/hidden/cmd.o: ../framework/hidden/cmd.c
