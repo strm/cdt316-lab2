@@ -1,5 +1,5 @@
 #include "communication.h"
-
+#include "fcntl.h"
 void Listener(void *sock) {
 	int connection_socket;
 	int accept_socket = (int *)sock;
@@ -8,14 +8,27 @@ void Listener(void *sock) {
 	fd_set master_set;
 	fd_set read_set;
 
-	if(listen(accept_socket, 0) < 0) {
+	fcntl(accept_socket, F_SETFL, O_NONBLOCK);
+	if(listen(accept_socket, FD_SETSIZE) < 0) {
 		perror("listen");
 	}
 
 	FD_ZERO(&master_set);
 	FD_SET(accept_socket, &master_set);
 
+//	connection_socket = accept(accept_socket, NULL, NULL);
+
+//	printf("accept: %d\nconnection: %d\n", accept_socket, connection_socket);
+
 	while(1) {
+		/*nBytes = read(connection_socket, &recvBuf, sizeof(recvBuf));
+
+		if(nBytes < 0)
+			perror("read");
+		else if(nBytes < sizeof(recvBuf))
+			continue;
+		else
+			debug_out(2, "Received %d\n", recvBuf);*/
 		read_set = master_set;
 		if(select(FD_SETSIZE, &read_set, NULL, NULL, NULL) < 0) {
 			perror("select");
@@ -30,14 +43,15 @@ void Listener(void *sock) {
 					else
 						FD_SET(connection_socket, &master_set);
 				}
-			}
-			else {
-				nBytes = read(i, &recvBuf, sizeof(recvBuf));
-				if(nBytes < 0) {
-					perror("read");
-				}
+
 				else {
-					debug_out(2, "Received %ld\n", recvBuf);
+					nBytes = read(i, &recvBuf, sizeof(recvBuf));
+					if(nBytes < 0) {
+						perror("read");
+					}
+					else {
+						debug_out(2, "Received %ld\n", recvBuf);
+					}
 				}
 			}
 		}
