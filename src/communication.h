@@ -15,6 +15,7 @@
 #include "../framework/hidden/io.h"
 #include "../framework/hidden/msg.h"
 
+void Listener(void *sock);
 int StartMiddleware(char *mw_name);
 
 #endif /* _COMMUNICATION_H_ */
