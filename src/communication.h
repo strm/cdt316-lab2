@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <pthread.h>
 #include "../framework/nameserver.h"
 #include "../framework/cmd.h"
 #include "../framework/middle-support.h"
