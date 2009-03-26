@@ -4,22 +4,8 @@
  * Date: 19 March 2009
  */
 
-#include <time.h>
-#include <string.h>
-#include "../framework/cmd.h"
-#include "../framework/middle-support.h"
-#include "middle_com.h"
-#include "listen_thread.h"
-#include "connection_list.h"
-#include "global.h"
-#include "parser.h"
-#include "trans.h"
-#include "lock.h"
-#include "soups.h"
+#include "work_thread.h"
 
-#define LOCALPARSE_SUCCESS	(1)
-#define LOCALPARSE_NO_LOCK	(2)
-#define LOCALPARSE_FAILED		(0)
 
 /**
  * Parse a transaction locally
@@ -156,12 +142,14 @@ void * worker_thread ( void * arg ){
 					}
 					break;
 				case MW_ACK:
+					/*
 					//TODO CHANGE TODO
 					trans->acks--;
 					if(trans->acks <= 0){
 						//TODO send commit message to everyone TODO
 
 					}
+					*/
 					break;
 				case MW_NAK:
 					switch(trans->owner){

@@ -5,6 +5,7 @@
 #include "middle_com.h"
 #include "listen_thread.h"
 #include "connection_list.h"
+#include "work_thread.h"
 
 #define NS_LOOKUP_ATTEMPTS	(10)
 #define NS_SLEEP_DELAY		(1)
@@ -210,7 +211,7 @@ void stop_middleware(int sock) {
 }
 
 int main(void) {
-	pthread_t listenThread;
+	pthread_t listenThread, workThread;
 	int mw_sock;
 	char ns_entry_data[ARG_SIZE];
 	char minaddress[ARG_SIZE];
@@ -224,6 +225,7 @@ int main(void) {
 	debug_out(5, "Creating listening thread\n");
 	fflush(stdout);
 	pthread_create(&listenThread, NULL, ListeningThread, (void *)NULL);
+	pthread_create(&workThread, NULL, worker_thread, (void *)1);
 	while(1) {
 		debug_out(5, "Starting middleware\n");
 		mw_sock = start_middleware("MIDDLEWARE");
@@ -244,6 +246,7 @@ int main(void) {
 		stop_middleware(mw_sock);
 		sleep(5);
 	}
+	pthread_join(workThread, NULL);
 	pthread_join(listenThread, NULL);
 	return 0;
 }
