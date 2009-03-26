@@ -126,7 +126,7 @@ int main(int argc, char **argv) {
     }
     debug_out(1, "Sending %s(%d): %ld\n", straddr(&addr), ntohs(addr.sin_port), ntohl(num_lines));
   }
-	num_lines = 42;
+	num_lines = atoi(argv[1]);
 	while(1){
 					res = write(sock, &num_lines, sizeof(num_lines));
 					if (res < sizeof(num_lines)) {
