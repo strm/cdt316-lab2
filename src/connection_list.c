@@ -6,33 +6,36 @@ int ConnectionHandler(int cmd, int sock, connection_t *buf, connections_t *list_
 	int ret = 0, i;
 
 	if(first_run) {
+		printf("Connection handler: First run (init)\n");
 		InitConnectionList(&list);
 		first_run = 0;
 	}
+
+	printf("Connection handler called for %d\n", cmd);
 
 	switch(cmd) {
 		case LIST_SET_MIDDLEWARE:
 			SetConnectionType(&list, sock, TYPE_MIDDLEWARE);
 			break;
 		case LIST_SET_CLIENT:
-			SetConnectionType(&list, sock, TYPE_CLIENT);
+			ret = SetConnectionType(&list, sock, TYPE_CLIENT);
 			break;
 		case LIST_ADD:
-			AddConnection(&list, sock);
+			ret = AddConnection(&list, sock);
 			break;
 		case LIST_REMOVE:
-			RemoveConnection(&list, sock);
+			ret = RemoveConnection(&list, sock);
 			break;
 		case LIST_CONNECTION_COUNT:
 			ret = list.nConnections;
 			break;
 		case LIST_GET_ENTRY:
-			SearchConnection(&list, sock, buf);
+			ret = SearchConnection(&list, sock, buf);
 			break;
 		case LIST_COPY:
 			list_buf->nConnections = list.nConnections;
 			list_buf->maxConnections = list.maxConnections;
-			list_buf->connection = (connections_t *)malloc(sizeof(connection_t) * list.maxConnections);
+			list_buf->connection = (connection_t *)malloc(sizeof(connection_t) * list.maxConnections);
 			for(i = 0; i < list_buf->maxConnections; i++)
 				list_buf->connection[i] = list.connection[i];
 			break;
@@ -69,6 +72,7 @@ int AddConnection(connections_t *list, socketfd sock) {
 			list->connection[i].connStatus = STATUS_CONNECTED;
 			list->connection[i].socket = sock;
 			list->connection[i].numCmds = 0;
+			list->connection[i].type = TYPE_MIDDLEWARE;
 			list->nConnections++;
 			
 			if(list->maxConnections - list->nConnections <= CONN_RESIZE_THRESHOLD)
@@ -120,14 +124,21 @@ int SearchConnection(connections_t *list, int sock, connection_t *buf) {
 	
 	for(i = 0; i < list->maxConnections; i++) {
 		if(list->connection[i].socket == sock) {
+			printf("Found matching connection in Search\n");
 			*buf = list->connection[i];
 			res = 0;
+			break;
 		}
 		else {
 			buf = NULL;
 			res = -1;
 		}
 	}
+
+	if(res == 0)
+		printf("Result seems good\n");
+	else
+		printf("Result was bad\n");
 	return res;
 }
 /*

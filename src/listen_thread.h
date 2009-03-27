@@ -12,6 +12,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <time.h>
+#include <fcntl.h>
 #include "middle_com.h"
 #include "msg_queue.h"
 #include "connection_list.h"

@@ -95,14 +95,14 @@ void *ListeningThread(void *arg) {
 	size_t bufSize;
 	connection_t tmp_conn;
 	socketfd connectionSocket;
+	struct sockaddr_in connectInfo;
+	socklen_t connectInfoLength = sizeof(connectInfo);
 	//socketfd listenSocket = CreateSocket(PORT);
-	socketfd listenSocket;
+	socketfd listenSocket = (int *)arg;
 	message_t msg;
 	struct timeval selectTimeout;
-	debug_out(5, "Welcome to listenThread\n");
 
-	debug_out(10, "Attempting to CreateSocket()\n");
-	listenSocket = CreateSocket(PORT);
+	fcntl(listenSocket, F_SETFL, O_NONBLOCK);
 
 	if(listen(listenSocket, 1) < 0) {
 		perror("listen: ");
@@ -114,7 +114,7 @@ void *ListeningThread(void *arg) {
 	FD_SET(listenSocket, &masterFdSet);
 	
 	selectTimeout.tv_sec = 0;
-	selectTimeout.tv_usec = -1;
+	selectTimeout.tv_usec = 0;
 
 	// The thread should wait for new messages when not processing something
 	while(1) {
@@ -126,22 +126,26 @@ void *ListeningThread(void *arg) {
 		for(i = 0; i < FD_SETSIZE; i++) {
 			if(FD_ISSET(i, &readFdSet)) {  
 				// New connection incoming
-				debug_out(5, "New connection\n");
 				if(i == listenSocket) {
-					connectionSocket = accept(listenSocket, NULL, NULL);
+					connectionSocket = accept(listenSocket, (struct sockaddr*)&connectInfo, &connectInfoLength);
+
+					debug_out(2, "New connection received\n");
 					if(connectionSocket < 0) {
 						perror("accept: ");
 						//TODO: Add error handling here
 					}
-					FD_SET(connectionSocket, &masterFdSet);
-					ConnectionHandler(LIST_ADD, connectionSocket, NULL, NULL);
+					else {
+						FD_SET(connectionSocket, &masterFdSet);
+						
+						ConnectionHandler(LIST_ADD, connectionSocket, NULL, NULL);
+					}
 				}
 				// Existing connection wishes to send something
 				else {
 					recvBuf = malloc(sizeof(long));
 					if((nBytes = force_read(i, recvBuf, sizeof(long))) > 0) {
 						// We are about to receive stuff from a middleware
-						if((int)(&recvBuf) == -1) {
+						if(*((long *)recvBuf) == -1) {
 							debug_out(5, "Received send request from MW\n");
 							FD_SET(i, &mwSet);
 							FD_CLR(i, &masterFdSet);
@@ -151,26 +155,27 @@ void *ListeningThread(void *arg) {
 							debug_out(5, "Received send request from client\n");
 							ConnectionHandler(LIST_SET_CLIENT, i, NULL, NULL);
 							if(ConnectionHandler(LIST_GET_ENTRY, i, &tmp_conn, NULL) == 0) {
-								tmp_conn.numCmds = (int)(&recvBuf);
+								debug_out(5, "Got and entry from the connection handler\n");
+								tmp_conn.numCmds = *((long *)recvBuf);
+								debug_out(2, "Received '%d' from someone\n", *((long *)recvBuf));
 							}
 							else {
 								debug_out(5, "Received message from unknown client\n");
 								exit(EXIT_FAILURE);
 							}
 							ConnectionHandler(LIST_REPLACE_ENTRY, 0, &tmp_conn, NULL);
-							FD_SET(i, &clientSet);
-							FD_CLR(i, &masterFdSet);
+							//FD_SET(i, &clientSet);
+							//FD_CLR(i, &masterFdSet);
 						}
 					}
 					else {
 						/* TODO: Add error handling */
-						debug_out(5, "TODO error handling\n");
 					}
 				}
 			}
 		}
 
-		readFdSet = mwSet;
+/*		readFdSet = mwSet;
 		if(select(FD_SETSIZE, &readFdSet, NULL, NULL, &selectTimeout) < 0) {
 			perror("select: ");
 			//TODO: Add error handling here
@@ -204,7 +209,7 @@ void *ListeningThread(void *arg) {
 					printf("CMD: %s ", ((command *)recvBuf)->arg1);
 				}
 			}
-		}
+		}*/
 	}
 	return (void *)0;
 }

@@ -44,17 +44,12 @@ int start_middleware(char *database) {
 	char address[ARG_SIZE];
 	int reallen;
 	struct sockaddr_in real;
-//	char db[TABLENAMELEN];
-//	char *p;
-	
 	int mw_instance = -1;
 	int ns_miss_count;
 	int ns_iterator;
 	char ns_entry[TABLENAMELEN];
 	char ns_entry_data[ARG_SIZE];
 	char entry_data_copy[ARG_SIZE];
-//	char *conn_address;
-//	int conn_port;
 	int conn_sock;
 	int conn_retries;
 	struct sockaddr_in hostInfo;
@@ -93,7 +88,8 @@ int start_middleware(char *database) {
 					strncpy(entry_data_copy, ns_entry_data, ARG_SIZE);
 					if(ConnectMiddleware(entry_data_copy, conn_sock, &hostInfo) == MW_CONNECT_SUCCESS) {
 						debug_out(5, "Connected to %s (%s)\n", ns_entry, ns_entry_data);
-						AddConnection(&connList, conn_sock);
+						ConnectionHandler(LIST_ADD, conn_sock, NULL, NULL);
+						//AddConnection(&connList, conn_sock);
 						break;
 					}
 					else {
@@ -211,10 +207,13 @@ void stop_middleware(int sock) {
 }
 
 int main(void) {
+	int i;
+	long msg;
 	pthread_t listenThread, workThread;
 	int mw_sock;
 	char ns_entry_data[ARG_SIZE];
 	char minaddress[ARG_SIZE];
+	connection_t obsolete;
 
 	srand(time(NULL));
 	
@@ -225,31 +224,23 @@ int main(void) {
 	debug_out(5, "Creating listening thread\n");
 	fflush(stdout);
 	mw_sock = start_middleware("MIDDLEWARE");
-	pthread_create(&listenThread, NULL, ListeningThread, (void *)NULL);
+	pthread_create(&listenThread, NULL, ListeningThread, (void *)mw_sock);
 	pthread_create(&workThread, NULL, worker_thread, (void *)mw_sock);
-	printf("hej\n");
-	/*
+
 	while(1) {
-		debug_out(5, "Starting middleware\n");
-		mw_sock = start_middleware("MIDDLEWARE");
-		sprintf(minaddress, "%s:%d", get_host_name(), sin_port);
-		debug_out(5, "Middleware started: %s\n", myname);
-		sleep(rand() % 30);
-		if(get_entry(ns_entry_data, "nameserver", myname)) {
-			if(strncmp(ns_entry_data, minaddress, ARG_SIZE) != 0) {
-				debug_out(5, "*** WARNING: Someone successfully stole our ns entry\n");
-				debug_out(5, "*** ns_entry: %s\n", ns_entry_data);
-				debug_out(5, "*** myaddress: %s\n", minaddress);
+		for(i = 0; i < 100; i++) {
+			if(ConnectionHandler(LIST_GET_ENTRY, i, &obsolete, NULL) == 0) {
+				msg = rand();
+				if(send(obsolete.socket, &msg, sizeof(msg), 0) < 0) {
+					perror("send");
+				}
+				else
+					debug_out(2, "Sent message to %d\n", obsolete.socket);
+				sleep(22);
 			}
-			
 		}
-		else
-			debug_out(5, "*** WARNING: Someone managed to delete our ns entry\n");
-		debug_out(5, "Stopping middleware\n");
-		stop_middleware(mw_sock);
-		sleep(5);
-	}
-	*/
+	}	
+
 	pthread_join(workThread, NULL);
 	pthread_join(listenThread, NULL);
 	return 0;

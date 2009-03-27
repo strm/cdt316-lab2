@@ -34,8 +34,8 @@ connection_list.o: connection_list.c connection_list.h
 	$(CC) $(CFLAGS) -o connection_list.o connection_list.c
 middle_com.o: middle_com.c middle_com.h
 	$(CC) $(CFLAGS) -o middle_com.o middle_com.c
-middleware.o: middle-main.c
-	${CC} -o middleware.o middle-main.c ${CFLAGS}
+middleware.o: middleware.c
+	${CC} -o middleware.o middleware.c ${CFLAGS}
 ../framwork/hidden/middle-support.o: ../framework/hidden/middle-support.c
 	${CC} ${CFLAGS} -o ../framework/hidden/middle-support.o ../framework/hidden/middle-support.c
 ../framework/hidden/cmd.o: ../framework/hidden/cmd.c
