@@ -35,11 +35,13 @@ void * worker_thread ( void * arg ){
 	int sock;
 	sock = (int ) (arg);
 	node * tmp;
-	int n;
+	int n, counter;
 	transNode * transList;
 	transNode * trans; //TODO does stuff get lost?
 	message_t newMsg;
-		debug_out(5,"Welcome to worker_thread");
+	varList *iter;
+	command cmd;
+	debug_out(5,"Welcome to worker_thread\n");
 	while(1){
 		/*
 		 * Read message queue
@@ -63,7 +65,7 @@ void * worker_thread ( void * arg ){
 						debug_out(5, "Failed to add transaction to list\n");
 					else{
 						trans->owner = tmp->msg.owner;
-						if(ConnectionHandler(LIST_COPY, 0, NULL, &trans->conList) != 0)
+						if(ConnectionHandler(LIST_COPY, 0, NULL, &trans->conList, NULL) != 0)
 							debug_out(5, "Error\n");
 						trans->id = tmp->msg.msgId;
 						trans->socket = tmp->msg.socket;
@@ -80,7 +82,40 @@ void * worker_thread ( void * arg ){
 							if(tmp->msg.endOfMsg == MW_EOF){
 								switch(ParseTransaction(&trans)){
 									case LOCALPARSE_SUCCESS:
-										//TODO send to all clients!
+										//send to all clients!
+										counter = -1;
+										newMsg.msgType = MW_TRANSACTION;
+										newMsg.endOfMsg = 0;
+										newMsg.msgId = tmp->id;
+										newMsg.sizeOfData = -1;
+										newMsg.owner = -1;
+
+										iter = trans->parsed;
+										if(iter != NULL){
+											for(;iter != NULL; iter = iter->next){
+												counter++;
+												newMsg.sizeOfData++;
+												newMsg.data[newMsg.sizeOfData] = iter->data;
+												if(counter % 7){
+													/*
+													 * Send Message here
+													 */
+													if(iter->next == NULL)
+														newMsg.endOfMsg = 1;
+													for(n = 0; n < trans->conList.nConnections; n++){
+														mw_send(trans->conList.connection[n].socket, &newMsg, sizeof(newMsg));
+													}
+													//clean up
+													newMsg.sizeOfData = -1;
+												}
+											}
+											if(newMsg.endOfMsg != 1){
+												newMsg.endOfMsg = 1;
+												for(n = 0; n < trans->conList.nConnections; n++){
+													mw_send(trans->conList.connection[n].socket, &newMsg, sizeof(newMsg));
+												}
+											}
+										}
 										break;
 									case LOCALPARSE_FAILED:
 										//unrecoverable error
@@ -91,8 +126,13 @@ void * worker_thread ( void * arg ){
 										if(removeTransaction(&transList, tmp->msg.msgId));
 										else
 											debug_out(5, "removeTransaction (failed)\n");
+										/* TODO
+										 * Send Response to client
+										 */
 										break;
 									case LOCALPARSE_NO_LOCK:
+										//empty parsed list
+										for(cmd = varListPop(&(trans->parsed)); cmd.op != MAGIC; cmd = varListPop(&(trans->parsed)));
 										//add message again to queue
 										if(globalMsg( MSG_PUSH, tmp ) == NULL)
 											debug_out(5, "globalMsg (failed)\n");
@@ -101,12 +141,11 @@ void * worker_thread ( void * arg ){
 							}
 							break;
 						default:
-							//TODO THIS IS FOR MW_EOF ONLY TODO
 							//from middleware;
 							for ( n = 0; n < tmp->msg.sizeOfData; n++ )
 								varListPush(tmp->msg.data[n], (&trans->parsed));
 							if(tmp->msg.endOfMsg == MW_EOF){
-							//Try to lockvariables
+								//Try to lockvariables
 								if(lockTransaction(trans) == 0){
 									debug_out(6, "lockTransaction (failed), sending nak frame\n");
 									/*
@@ -150,7 +189,7 @@ void * worker_thread ( void * arg ){
 					//TODO CHANGE TODO
 					trans->acks--;
 					if(trans->acks <= 0){
-						//TODO send commit message to everyone TODO
+					//TODO send commit message to everyone TODO
 
 					}
 					*/
@@ -160,9 +199,23 @@ void * worker_thread ( void * arg ){
 						case MSG_ME:
 							//unlock
 							if(removeAll(trans->id)){
+
+								newMsg.msgType = MW_NAK;
+								newMsg.msgId = tmp->msg.msgId;
+								newMsg.endOfMsg = MW_EOF;
+								newMsg.sizeOfData = 0;
+								newMsg.owner = MSG_ME;
+
+								for(n = 0; n < trans->conList.nConnections; n++){
+									mw_send(trans->conList.connection[n].socket, &newMsg, sizeof(newMsg));
+								}
 								//need to do this one again
-								/* TODO send nak to everyone */
-								trans->id = globalId ( ID_GET, 0 ); //get a new id
+								for(cmd = varListPop(&(trans->parsed)); cmd.op != MAGIC; cmd = varListPop(&(trans->parsed)));
+								newMsg.msgType = MW_TRANSACTION;
+								newMsg.endOfMsg = MW_EOF;
+								newMsg.msgId = trans->id;
+
+								globalMsg(MSG_PUSH, createNode(&newMsg));
 							}
 							else
 								debug_out(5, "removeAll (failed)\n");
@@ -182,7 +235,19 @@ void * worker_thread ( void * arg ){
 					/*
 					 * Update transaction to db
 					 */
-
+					if(commitParse(trans))
+						n = sendResponse(trans);
+							if(n)
+								debug_out(4, "Response sent to client\n");
+							else if(!n)
+								debug_out(4, "Failed to send response to client\n");
+							else;
+								//we are not the owner
+					break;
+				case MW_ALIVE:
+					/**
+					 * Update connection list here
+					 */
 					break;
 			} //msgtype switch
 		} //unlock after here
@@ -190,4 +255,3 @@ void * worker_thread ( void * arg ){
 	} /* end of while(1) */
 	return (void *) 0;
 }
-

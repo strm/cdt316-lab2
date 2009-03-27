@@ -17,6 +17,7 @@
 #define VALUE_LEN	(768)
 #define MSG_MAX_DATA	(7)
 #define MSG_ME		(-42)
+#define MSG_ALIVE	(-255)
 
 // Definitions for middleware communication
 #define MW_DISCONNECT			(0)

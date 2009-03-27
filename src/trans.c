@@ -102,20 +102,18 @@ command varListPop(varList ** arg){
 	command ret;
 	ret.op = NO_ARG;
 	if((*arg) == NULL)
-		printf("{0}");
+		ret.op = MAGIC;
 	else if((*arg)->next == NULL){
 		tmp = (*arg);
 		(*arg) = NULL;
 		ret = tmp->data;
 		free(tmp);
-		printf("{1}");
 	}
 	else{
 		tmp = (*arg);
 		(*arg) = (*arg)->next;
 		ret = tmp->data;
 		free(tmp);
-		printf("{2+}");
 	}
 	return ret;
 }
