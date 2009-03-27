@@ -15,14 +15,14 @@ void * aliveThread(void * arg){
 		/*
 		 * Get the connection list
 		 */
-		if(!ConnectionHandler(LIST_COPY, 0, NULL, &list)){
+		if(!ConnectionHandler(LIST_COPY, 0, NULL, &list, NULL)){
 			for(n = 0; n < list.nConnections; n++){
 				nodeMsg = createMessage(-1, "", "", "", 1);
 				nNode = createNode(nodeMsg);
-				if(send(list.connection->socket, msg, sizeof(msg), 0) == -1){
+				if(send(list.connection->socket, &msg, sizeof(msg), 0) == -1){
 					//need to be removed from the list
 					debug_out(4, "No connection from socket: %d", list.connection->socket);
-					if(ConnectionHandler(LIST_REMOVE, list.connection->socket, NULL, NULL) == -1)
+					if(ConnectionHandler(LIST_REMOVE, list.connection->socket, NULL, NULL, NULL) == -1)
 						debug_out(5, "Failed LIST_REMOVE");
 					/*
 					 * Create message for work_thread

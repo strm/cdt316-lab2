@@ -1,17 +1,17 @@
 #include "connection_list.h"
+#include <sys/socket.h>
 
-int ConnectionHandler(int cmd, int sock, connection_t *buf, connections_t *list_buf) {
+int ConnectionHandler(int cmd, int sock, connection_t *buf, connections_t *list_buf, struct sockaddr *cInfo) {
 	static connections_t list;
 	static char first_run = 1;
 	int ret = 0, i;
+	char addr[ARG_SIZE] = "";
 
 	if(first_run) {
 		printf("Connection handler: First run (init)\n");
 		InitConnectionList(&list);
 		first_run = 0;
 	}
-
-	printf("Connection handler called for %d\n", cmd);
 
 	switch(cmd) {
 		case LIST_SET_MIDDLEWARE:
@@ -21,7 +21,8 @@ int ConnectionHandler(int cmd, int sock, connection_t *buf, connections_t *list_
 			ret = SetConnectionType(&list, sock, TYPE_CLIENT);
 			break;
 		case LIST_ADD:
-			ret = AddConnection(&list, sock);
+			sprintf(addr, "%s", cInfo->sa_data);
+			ret = AddConnection(&list, sock, addr);
 			break;
 		case LIST_REMOVE:
 			ret = RemoveConnection(&list, sock);
@@ -36,12 +37,24 @@ int ConnectionHandler(int cmd, int sock, connection_t *buf, connections_t *list_
 			list_buf->nConnections = list.nConnections;
 			list_buf->maxConnections = list.maxConnections;
 			list_buf->connection = (connection_t *)malloc(sizeof(connection_t) * list.maxConnections);
-			for(i = 0; i < list_buf->maxConnections; i++)
-				list_buf->connection[i] = list.connection[i];
+			for(i = 0; i < list_buf->maxConnections; i++) {
+				list_buf->connection[i].socket = list.connection[i].socket;
+				list_buf->connection[i].connStatus = list.connection[i].connStatus;
+				list_buf->connection[i].transStatus = list.connection[i].transStatus;
+				list_buf->connection[i].type = list.connection[i].type;
+				list_buf->connection[i].numCmds = list.connection[i].numCmds;
+			}
 			break;
 		case LIST_REPLACE_ENTRY:
 			ReplaceConnection(&list, buf);
 			break;
+		case LIST_PRINT:
+			for(i = 0; i < list.maxConnections; i++) {
+				if(list.connection[i].connStatus == STATUS_CONNECTED) {
+					printf("addr: %s - ", list.connection[i].addr);
+					printf("socket: %d, status: %d\n", list.connection[i].socket, list.connection[i].connStatus);
+				}
+			}
 	}
 	return ret;
 }
@@ -64,17 +77,31 @@ int SetConnectionType(connections_t *list, socketfd sock, int type) {
 ** Description:	Adds a new connection to a connection list. It sets the attributes
 **		of the new connection to default values for connected sockets
 */
-int AddConnection(connections_t *list, socketfd sock) {
+int AddConnection(connections_t *list, socketfd sock, char *addr) {
 	int i;
-	
+	struct sockaddr_in saddr;
+	socklen_t saddr_len = sizeof(saddr);
+
+	if(getpeername(sock, &saddr, &saddr_len) == -1) {
+		perror("getsockname");
+		//return -1;
+	}
+
+//	printf("sa_data: %c\n", saddr.sa_data[0]);
+	printf("sa_data (int): %d\n", ntohs(saddr.sin_port));
+
+
+
 	for(i = 0; i < list->maxConnections; i++) {
 		if(list->connection[i].connStatus == STATUS_DISCONNECTED) {
 			list->connection[i].connStatus = STATUS_CONNECTED;
 			list->connection[i].socket = sock;
 			list->connection[i].numCmds = 0;
 			list->connection[i].type = TYPE_MIDDLEWARE;
-			list->nConnections++;
-			
+			strncpy(list->connection[i].addr, "Hej", strlen("Hej"));
+			//strncpy(list->connection[i].addr, saddr.sa_data, strlen(saddr.sa_data));
+			(list->nConnections)++;
+
 			if(list->maxConnections - list->nConnections <= CONN_RESIZE_THRESHOLD)
 				ResizeConnectionList(list);
 			printf("Added connection from %d in connection list\n", sock);
@@ -112,7 +139,7 @@ int RemoveConnection(connections_t *list, socketfd sock) {
 		if(list->connection[i].socket == sock) {
 			list->connection[i].connStatus = STATUS_DISCONNECTED;
 			list->connection[i].type = TYPE_MIDDLEWARE;
-			list->nConnections--;
+			(list->nConnections)--;
 			return 0;
 		}
 	}
@@ -124,7 +151,6 @@ int SearchConnection(connections_t *list, int sock, connection_t *buf) {
 	
 	for(i = 0; i < list->maxConnections; i++) {
 		if(list->connection[i].socket == sock) {
-			printf("Found matching connection in Search\n");
 			*buf = list->connection[i];
 			res = 0;
 			break;
@@ -135,10 +161,6 @@ int SearchConnection(connections_t *list, int sock, connection_t *buf) {
 		}
 	}
 
-	if(res == 0)
-		printf("Result seems good\n");
-	else
-		printf("Result was bad\n");
 	return res;
 }
 /*

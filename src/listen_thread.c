@@ -12,7 +12,6 @@
 #include <time.h>
 
 int HandleMessage(message_t *msg, socketfd from, fd_set *fdSet) {
-	int i, count;
 	int ret = 0;
 	node *newNode;
 	message_t tmp;
@@ -66,7 +65,7 @@ int HandleMessage(message_t *msg, socketfd from, fd_set *fdSet) {
 			case MW_DISCONNECT:
 				/* TODO: Add mutex to lock the connection list so no bad things might happen */
 				ret = MW_DISCONNECT;
-				ConnectionHandler(LIST_REMOVE, from, NULL, NULL);
+				ConnectionHandler(LIST_REMOVE, from, NULL, NULL, NULL);
 				if(fdSet != NULL)
 					FD_CLR(from, fdSet);
 				close(from);
@@ -90,19 +89,18 @@ int HandleMessage(message_t *msg, socketfd from, fd_set *fdSet) {
 void *ListeningThread(void *arg) {
 	fd_set masterFdSet, readFdSet; /* Used by select */
 	fd_set clientSet, mwSet;
-	int i, j, nBytes;
+	int i, nBytes;
 	void * recvBuf;
-	size_t bufSize;
+	connections_t connections;
 	connection_t tmp_conn;
 	socketfd connectionSocket;
-	struct sockaddr_in connectInfo;
+	struct sockaddr connectInfo;
 	socklen_t connectInfoLength = sizeof(connectInfo);
 	//socketfd listenSocket = CreateSocket(PORT);
 	socketfd listenSocket = (int *)arg;
-	message_t msg;
 	struct timeval selectTimeout;
 
-	fcntl(listenSocket, F_SETFL, O_NONBLOCK);
+	debug_out(5, "Listenthread has started\n");
 
 	if(listen(listenSocket, 1) < 0) {
 		perror("listen: ");
@@ -111,14 +109,29 @@ void *ListeningThread(void *arg) {
 	FD_ZERO(&masterFdSet);
 	FD_ZERO(&clientSet);
 	FD_ZERO(&mwSet);
+	FD_ZERO(&readFdSet);
 	FD_SET(listenSocket, &masterFdSet);
 	
-	selectTimeout.tv_sec = 0;
-	selectTimeout.tv_usec = 0;
+	fcntl(listenSocket, F_SETFL, O_NONBLOCK);
 
 	// The thread should wait for new messages when not processing something
 	while(1) {
-		readFdSet = masterFdSet;
+		//readFdSet = masterFdSet;
+		selectTimeout.tv_sec = 0;
+		selectTimeout.tv_usec = 200;
+		FD_ZERO(&readFdSet);
+		FD_SET(listenSocket, &readFdSet);
+
+		debug_out(5, "Listenthread: copying connection list\n");
+		if(ConnectionHandler(LIST_COPY, 0, NULL, &connections, NULL) != 0) 
+			debug_out(5, "Could not create copy of connection list\n");
+		for(i = 0; i < connections.maxConnections; i++) {
+			if(connections.connection[i].connStatus == STATUS_CONNECTED) {
+				FD_SET(connections.connection[i].socket, &readFdSet);
+			}
+		}
+		debug_out(5, "Listenthread: going into select\n");
+
 		if(select(FD_SETSIZE, &readFdSet, NULL, NULL, NULL) < 0) {
 			perror("select: ");
 			//TODO: Add error handling here
@@ -127,17 +140,17 @@ void *ListeningThread(void *arg) {
 			if(FD_ISSET(i, &readFdSet)) {  
 				// New connection incoming
 				if(i == listenSocket) {
-					connectionSocket = accept(listenSocket, (struct sockaddr*)&connectInfo, &connectInfoLength);
+					connectionSocket = accept(listenSocket, &connectInfo, &connectInfoLength);
 
-					debug_out(2, "New connection received\n");
 					if(connectionSocket < 0) {
 						perror("accept: ");
 						//TODO: Add error handling here
 					}
 					else {
 						FD_SET(connectionSocket, &masterFdSet);
-						
-						ConnectionHandler(LIST_ADD, connectionSocket, NULL, NULL);
+						printf("Adding new connection (%d) to list... ", connectionSocket);
+						ConnectionHandler(LIST_ADD, connectionSocket, NULL, NULL, &connectInfo);
+						printf("connection added\n"); 
 					}
 				}
 				// Existing connection wishes to send something
@@ -152,18 +165,15 @@ void *ListeningThread(void *arg) {
 						}
 						// We are about to receive stuff from a client
 						else {
-							debug_out(5, "Received send request from client\n");
-							ConnectionHandler(LIST_SET_CLIENT, i, NULL, NULL);
-							if(ConnectionHandler(LIST_GET_ENTRY, i, &tmp_conn, NULL) == 0) {
-								debug_out(5, "Got and entry from the connection handler\n");
+							ConnectionHandler(LIST_SET_CLIENT, i, NULL, NULL, NULL);
+							if(ConnectionHandler(LIST_GET_ENTRY, i, &tmp_conn, NULL, NULL) == 0) {
 								tmp_conn.numCmds = *((long *)recvBuf);
-								debug_out(2, "Received '%d' from someone\n", *((long *)recvBuf));
+								debug_out(3, "Received '%d' from '%d'\n", *((long *)recvBuf), i);
 							}
 							else {
 								debug_out(5, "Received message from unknown client\n");
-								exit(EXIT_FAILURE);
 							}
-							ConnectionHandler(LIST_REPLACE_ENTRY, 0, &tmp_conn, NULL);
+							//ConnectionHandler(LIST_REPLACE_ENTRY, 0, &tmp_conn, NULL);
 							//FD_SET(i, &clientSet);
 							//FD_CLR(i, &masterFdSet);
 						}

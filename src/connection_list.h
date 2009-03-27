@@ -4,6 +4,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
+#include "../framework/cmd.h"
+#include <netinet/in.h>
+#include <sys/socket.h>
 
 // Initial maximum number of connections
 #define CONN_DEFAULT_LIMIT		(10)
@@ -21,6 +25,7 @@
 #define LIST_REPLACE_ENTRY		(5)
 #define LIST_SET_CLIENT				(6)
 #define LIST_SET_MIDDLEWARE		(7)
+#define LIST_PRINT						(8)
 
 // Definitions for connection status
 #define STATUS_DISCONNECTED		(0)
@@ -39,6 +44,7 @@ typedef struct {
 	int transStatus;
 	int type;
 	int numCmds;
+	char addr[ARG_SIZE];
 } connection_t;
 
 typedef struct {
@@ -49,13 +55,13 @@ typedef struct {
 
 typedef int socketfd;
 
-int ConnectionHandler(int cmd, int sock, connection_t *buf, connections_t *list_buf);
+int ConnectionHandler(int cmd, int sock, connection_t *buf, connections_t *list_buf, struct sockaddr *cInfo);
 
 /* Sets the connection type (MW or client) in a connection */
 int SetConnectionType(connections_t *list, socketfd sock, int type);
 
 /* Adds a connection to the first available position */
-int AddConnection(connections_t *list, int sock);
+int AddConnection(connections_t *list, int sock, char *addr);
 
 /* Replaces an entry with the information supplied */
 int ReplaceConnection(connections_t *list, connection_t *src);
