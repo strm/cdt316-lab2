@@ -130,6 +130,7 @@ void *ListeningThread(void *arg) {
 				FD_SET(connections.connection[i].socket, &readFdSet);
 			}
 		}
+		free(connections.connection);
 		debug_out(5, "Listenthread: going into select\n");
 
 		if(select(FD_SETSIZE, &readFdSet, NULL, NULL, NULL) < 0) {

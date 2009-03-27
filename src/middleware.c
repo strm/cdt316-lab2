@@ -79,8 +79,6 @@ int start_middleware(char *database) {
 
 	sin_port = ntohs(real.sin_port);
 
-	pthread_create(&listenThread, NULL, ListeningThread, (void *)sock);
-
 	for(ns_miss_count = 0, ns_iterator = 0; ns_miss_count < NS_LOOKUP_ATTEMPTS; ns_iterator++) {
 		sprintf(ns_entry, "%s%d", database, ns_iterator);
 		if(get_entry(ns_entry_data, "nameserver", ns_entry)) {
