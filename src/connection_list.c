@@ -51,7 +51,6 @@ int ConnectionHandler(int cmd, int sock, connection_t *buf, connections_t *list_
 		case LIST_PRINT:
 			for(i = 0; i < list.maxConnections; i++) {
 				if(list.connection[i].connStatus == STATUS_CONNECTED) {
-					printf("addr: %s - ", list.connection[i].addr);
 					printf("socket: %d, status: %d\n", list.connection[i].socket, list.connection[i].connStatus);
 				}
 			}
@@ -98,7 +97,6 @@ int AddConnection(connections_t *list, socketfd sock, char *addr) {
 			list->connection[i].socket = sock;
 			list->connection[i].numCmds = 0;
 			list->connection[i].type = TYPE_MIDDLEWARE;
-			strncpy(list->connection[i].addr, "Hej", strlen("Hej"));
 			//strncpy(list->connection[i].addr, saddr.sa_data, strlen(saddr.sa_data));
 			(list->nConnections)++;
 

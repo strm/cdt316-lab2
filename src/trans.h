@@ -11,7 +11,7 @@
 #include "soups.h"
 #include "../framework/cmd.h"
 #include "../framework/middle-support.h"
-#include "connection_list.h"
+#include "connections.h"
 
 #define NO_ARG	(-255)
 
@@ -26,7 +26,7 @@ typedef struct _trans{
 	int id;
 	int owner;
 	int socket;
-	connections_t conList;
+	connection *conList;
 	struct _trans * next;
 } transNode;
 

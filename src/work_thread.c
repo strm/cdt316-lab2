@@ -35,6 +35,7 @@ void * worker_thread ( void * arg ){
 	int sock;
 	sock = (int ) (arg);
 	node * tmp;
+	connection *it;
 	int n, counter;
 	transNode * transList;
 	transNode * trans; //TODO does stuff get lost?
@@ -65,7 +66,7 @@ void * worker_thread ( void * arg ){
 						debug_out(5, "Failed to add transaction to list\n");
 					else{
 						trans->owner = tmp->msg.owner;
-						if(ConnectionHandler(LIST_COPY, 0, NULL, &trans->conList, NULL) != 0)
+						if(ConnectionHandler(COPY_LIST, NULL, &(trans->conList), NULL, 0) != 0)
 							debug_out(5, "Error\n");
 						trans->id = tmp->msg.msgId;
 						trans->socket = tmp->msg.socket;
@@ -102,8 +103,9 @@ void * worker_thread ( void * arg ){
 													 */
 													if(iter->next == NULL)
 														newMsg.endOfMsg = 1;
-													for(n = 0; n < trans->conList.nConnections; n++){
-														mw_send(trans->conList.connection[n].socket, &newMsg, sizeof(newMsg));
+													for(it = trans->conList; it != NULL; it = it->next) {
+													//for(n = 0; n < trans->conList.nConnections; n++){
+														mw_send(it->socket, &newMsg, sizeof(newMsg));
 													}
 													//clean up
 													newMsg.sizeOfData = -1;
@@ -111,8 +113,9 @@ void * worker_thread ( void * arg ){
 											}
 											if(newMsg.endOfMsg != 1){
 												newMsg.endOfMsg = 1;
-												for(n = 0; n < trans->conList.nConnections; n++){
-													mw_send(trans->conList.connection[n].socket, &newMsg, sizeof(newMsg));
+												for(it = trans->conList; it != NULL; it = it->next) {
+												//for(n = 0; n < trans->conList.nConnections; n++){
+													mw_send(it->socket, &newMsg, sizeof(newMsg));
 												}
 											}
 										}
@@ -206,8 +209,9 @@ void * worker_thread ( void * arg ){
 								newMsg.sizeOfData = 0;
 								newMsg.owner = MSG_ME;
 
-								for(n = 0; n < trans->conList.nConnections; n++){
-									mw_send(trans->conList.connection[n].socket, &newMsg, sizeof(newMsg));
+								for(it = trans->conList; it != NULL; it = it->next) {
+								//for(n = 0; n < trans->conList.nConnections; n++){
+									mw_send(it->socket, &newMsg, sizeof(newMsg));
 								}
 								//need to do this one again
 								for(cmd = varListPop(&(trans->parsed)); cmd.op != MAGIC; cmd = varListPop(&(trans->parsed)));

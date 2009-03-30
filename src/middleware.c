@@ -4,7 +4,7 @@
 #include "../framework/middle-support.h"
 #include "middle_com.h"
 #include "listen_thread.h"
-#include "connection_list.h"
+#include "connections.h"
 #include "work_thread.h"
 
 #define NS_LOOKUP_ATTEMPTS	(10)
@@ -16,7 +16,6 @@
 #define MW_CONNECT_FAIL		(0)
 
 static char myname[TABLENAMELEN] = "";
-static connections_t connList;
 static int sin_port = -1;
 char DB_GLOBAL[ARG_SIZE];
 
@@ -42,7 +41,7 @@ int ConnectMiddleware(char *ns_entry_data, int csock, struct sockaddr_in *hostIn
 int start_middleware(char *database) {
 	int sock;
 	char address[ARG_SIZE];
-	int reallen;
+	socklen_t reallen;
 	struct sockaddr_in real;
 	int mw_instance = -1;
 	int ns_miss_count;
@@ -54,6 +53,7 @@ int start_middleware(char *database) {
 	int conn_retries;
 	struct sockaddr_in hostInfo;
 	pthread_t listenThread;
+	connection conn;
 
 	if (myname[0] != '\0') {
 		debug_out(2, "Already registered!\n");
@@ -78,6 +78,7 @@ int start_middleware(char *database) {
 	}
 
 	sin_port = ntohs(real.sin_port);
+	pthread_create(&listenThread, NULL, ListeningThread, (void *)sock);
 
 	for(ns_miss_count = 0, ns_iterator = 0; ns_miss_count < NS_LOOKUP_ATTEMPTS; ns_iterator++) {
 		sprintf(ns_entry, "%s%d", database, ns_iterator);
@@ -89,9 +90,20 @@ int start_middleware(char *database) {
 					strncpy(entry_data_copy, ns_entry_data, ARG_SIZE);
 					debug_out(3, "Trying to connect to '%s'\n", ns_entry_data);
 					if(ConnectMiddleware(entry_data_copy, conn_sock, &hostInfo) == MW_CONNECT_SUCCESS) {
-						debug_out(5, "Connected to %s (%s)\n", ns_entry, ns_entry_data);
-						ConnectionHandler(LIST_ADD, conn_sock, NULL, NULL,(struct sockaddr *)&hostInfo);
-						conn_sock = socket(AF_INET, SOCK_STREAM, 0);
+						debug_out(5, "Connected to %s (%s, %d)\n", ns_entry, ns_entry_data, conn_sock);
+						CreateConnectionInfo(
+								&conn,
+								conn_sock,
+								ns_entry_data,
+								TYPE_MIDDLEWARE,
+								0);
+						ConnectionHandler(
+								ADD_TO_LIST,
+								&conn,
+								NULL,
+								NULL,
+								0);
+						//ConnectionHandler(LIST_ADD_TO_LIST, conn_sock, NULL, NULL,(struct sockaddr *)&hostInfo);
 						break;
 					}
 					else {
@@ -120,8 +132,19 @@ int start_middleware(char *database) {
 							strncpy(entry_data_copy, ns_entry_data, ARG_SIZE);
 							if(ConnectMiddleware(entry_data_copy, conn_sock, &hostInfo) == MW_CONNECT_SUCCESS) {
 								debug_out(5, "Verification failed - Connected to %s (%s)\n", ns_entry, ns_entry_data);
-								ConnectionHandler(LIST_ADD, conn_sock, NULL, NULL, (struct sockaddr *)&hostInfo);
-								conn_sock = socket(AF_INET, SOCK_STREAM, 0);
+						CreateConnectionInfo(
+								&conn,
+								conn_sock,
+								ns_entry_data,
+								TYPE_MIDDLEWARE,
+								0);
+						ConnectionHandler(
+								ADD_TO_LIST,
+								&conn,
+								NULL,
+								NULL,
+								0);
+								//ConnectionHandler(LIST_ADD_TO_LIST, conn_sock, NULL, NULL, (struct sockaddr *)&hostInfo);
 							}
 							// Another middleware stole our entry and disappeared, ignore the slot and let
 							// someone else take it later
@@ -138,8 +161,19 @@ int start_middleware(char *database) {
 						strncpy(entry_data_copy, ns_entry_data, ARG_SIZE);
 						if(ConnectMiddleware(entry_data_copy, conn_sock, &hostInfo) == MW_CONNECT_SUCCESS) {
 							debug_out(5, "Entry rectified - Connected to %s (%s)\n", ns_entry, ns_entry_data);
-							ConnectionHandler(LIST_ADD, conn_sock, NULL, NULL, (struct sockaddr *)&hostInfo);
-							conn_sock = socket(AF_INET, SOCK_STREAM, 0);
+						CreateConnectionInfo(
+								&conn,
+								conn_sock,
+								ns_entry_data,
+								TYPE_MIDDLEWARE,
+								0);
+						ConnectionHandler(
+								ADD_TO_LIST,
+								&conn,
+								NULL,
+								NULL,
+								0);
+							//ConnectionHandler(LIST_ADD_TO_LIST, conn_sock, NULL, NULL, (struct sockaddr *)&hostInfo);
 						}
 						else {
 							if(!delete_entry("nameserver", ns_entry))
@@ -170,8 +204,19 @@ int start_middleware(char *database) {
 					strncpy(entry_data_copy, ns_entry_data, ARG_SIZE);
 					if(ConnectMiddleware(entry_data_copy, conn_sock, &hostInfo) == MW_CONNECT_SUCCESS) {
 						debug_out(5, "Verification failed - Connected to %s (%s)\n", ns_entry, ns_entry_data);
-						ConnectionHandler(LIST_ADD, conn_sock, NULL, NULL, (struct sockaddr *)&hostInfo);
-						conn_sock = socket(AF_INET, SOCK_STREAM, 0);
+						CreateConnectionInfo(
+								&conn,
+								conn_sock,
+								ns_entry_data,
+								TYPE_MIDDLEWARE,
+								0);
+						ConnectionHandler(
+								ADD_TO_LIST,
+								&conn,
+								NULL,
+								NULL,
+								0);
+						//ConnectionHandler(LIST_ADD_TO_LIST, conn_sock, NULL, NULL, (struct sockaddr *)&hostInfo);
 					}
 					// Another middleware stole our entry and disappeared, ignore the slot and let
 					// someone else take it later
@@ -214,33 +259,30 @@ void stop_middleware(int sock) {
 int main(void) {
 	int i;
 	long msg;
-	pthread_t listenThread, workThread;
 	int mw_sock;
-	//char ns_entry_data[ARG_SIZE];
-	//char minaddress[ARG_SIZE];
-	connection_t obsolete;
+	connection c;
 
 	srand(time(NULL));
 	
-	InitConnectionList(&connList);
-
 	set_severity(3);
 	
 	mw_sock = start_middleware("MIDDLEWARE");
 	debug_out(2, "Middleware initialized, starting listening thread\n");
-	//pthread_create(&listenThread, NULL, ListeningThread, (void *)mw_sock);
-	//pthread_create(&workThread, NULL, worker_thread, (void *)mw_sock);
 
 	while(1) {
 		for(i = 0; i < 20; i++) {
-			if(ConnectionHandler(LIST_GET_ENTRY, i, &obsolete, NULL, NULL) == 0) {
+			if(ConnectionHandler(
+						GET_BY_SOCKET,
+						&c,
+						NULL,
+						NULL,
+						i) == 0) {
 				msg = rand();
-				if(send(obsolete.socket, &msg, sizeof(msg), 0) < 0) {
+				if(send(c.socket, &msg, sizeof(msg), 0) < 0) {
 					perror("send");
 				}
 				else {
-					ConnectionHandler(LIST_PRINT, 0, NULL, NULL, NULL);
-					debug_out(3, "Sent '%ld' to %d\n", msg, obsolete.socket);
+					debug_out(3, "Sent '%ld' to %d\n", msg, c.socket);
 				}
 				sleep(2);
 			}

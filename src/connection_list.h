@@ -44,7 +44,6 @@ typedef struct {
 	int transStatus;
 	int type;
 	int numCmds;
-	char addr[ARG_SIZE];
 } connection_t;
 
 typedef struct {

@@ -14,7 +14,7 @@
 #include "../framework/middle-support.h"
 #include "middle_com.h"
 #include "listen_thread.h"
-#include "connection_list.h"
+#include "connections.h"
 #include "global.h"
 #include "parser.h"
 #include "trans.h"
