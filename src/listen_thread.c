@@ -158,15 +158,18 @@ void *ListeningThread(void *arg) {
 						}
 						else {
 							recvBuf = malloc(sizeof(long));
-							nBytes = force_read(i, recvBuf, sizeof(long));
+							debug_out(3, "Waiting for connection identification\n");
+							nBytes = force_read(connectionSocket, recvBuf, sizeof(long));
 							if(nBytes > 0) {
 								if(*((long *)recvBuf) > 0) { // This is a client
+									debug_out(3, "Client connection established\n");
 									msg_data.msgType = MW_TRANSACTION;
 									msg_data.owner = MSG_ME;
-									msg_data.socket = i;
+									msg_data.socket = connectionSocket;
 									msg_data.sizeOfData = *((long *)recvBuf);
 									tmp_msg = createNode(&msg_data);
 									globalMsg(MSG_PUSH, tmp_msg);
+									debug_out(3, "Pushed shit on the queue\n");
 								}
 								else {
 									FD_SET(connectionSocket, &masterFdSet);
@@ -186,6 +189,8 @@ void *ListeningThread(void *arg) {
 								}
 							}
 							else {
+								debug_out(3, "This reading thing is hard\n");
+								debug_out(3, "Read returned '%d' '%ld'\n", nBytes, *((long *)recvBuf));
 								// Error reading, endpoint probably crashed or hanged up
 							}
 						}

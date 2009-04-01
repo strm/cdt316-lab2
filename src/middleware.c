@@ -262,15 +262,17 @@ int main(void) {
 	int mw_sock;
 	connection c;
 	pthread_t listenThread;
+	pthread_t work;
 
 	srand(time(NULL));
 	
 	set_severity(3);
+	globalMsg(MSG_SETUP, MSG_NO_ARG);
 	
 	mw_sock = start_middleware("MIDDLEWARE");
 	debug_out(2, "Middleware initialized, starting listening thread\n");
 	pthread_create(&listenThread, NULL, ListeningThread, (void *)&mw_sock);
-
+	pthread_create(&work, NULL, worker_thread, ( void * ) &mw_sock);
 	while(1) {
 		for(i = 0; i < 20; i++) {
 			if(ConnectionHandler(
@@ -291,7 +293,7 @@ int main(void) {
 		}
 	}	
 
-	//pthread_join(workThread, NULL);
+	pthread_join(work, NULL);
 	//pthread_join(listenThread, NULL);
 	return 0;
 }

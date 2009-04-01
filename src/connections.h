@@ -22,6 +22,7 @@
 #define TYPE_CLIENT				(11)
 
 typedef struct _connection {
+	int ack;
 	int socket;								// Socket!
 	char address[ARG_SIZE];		// Address to the connectee
 	char connection_type;			// Type of connection (middleware/client)

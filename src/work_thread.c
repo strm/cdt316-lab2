@@ -55,7 +55,7 @@ void * worker_thread ( void * arg ){
 				continue;
 			}
 			else{
-				debug_out(5, "Message recived\n");
+				debug_out(5, "Message recived\n %d", tmp->msg.msgType);
 				if(isTransaction(transList, tmp->msg.msgId))
 					trans = getTransaction(transList, tmp->msg.msgId);
 				else if(tmp->msg.msgType == MW_TRANSACTION){
@@ -65,11 +65,20 @@ void * worker_thread ( void * arg ){
 					if(!addTransaction( &transList, trans))
 						debug_out(5, "Failed to add transaction to list\n");
 					else{
+						debug_out(3, "Setting up new transaction\n");
 						trans->owner = tmp->msg.owner;
 						if(ConnectionHandler(COPY_LIST, NULL, &(trans->conList), NULL, 0) != 0)
 							debug_out(5, "Error\n");
+						else
+							debug_out(3, "We have a list\n");
 						trans->id = tmp->msg.msgId;
 						trans->socket = tmp->msg.socket;
+						/**
+						 * READ FROM CLIENT HERE
+						 * TODO TODO TODO TODO
+						 */
+						while(1)
+						printf("read from client %d", tmp->msg.sizeOfData);
 					}
 				}
 			}
@@ -188,14 +197,23 @@ void * worker_thread ( void * arg ){
 					}
 					break;
 				case MW_ACK:
-					/*
-					//TODO CHANGE TODO
-					trans->acks--;
-					if(trans->acks <= 0){
-					//TODO send commit message to everyone TODO
-
+					if(GetConnectionBySocket(&(trans->conList), it, tmp->msg.socket) == 0){
+						it->ack = 1;
+						if(RemoveConnectionBySocket(&(trans->conList), tmp->msg.socket) == 0)
+							if(AddConnection(&(trans->conList), it) == 0);
+							else
+								debug_out(5, "AddConnection != 0\n");
+						else
+							debug_out(5, "RemoveConnectionBySocketFailed\n");
+						for(it = trans->conList; it != NULL; it = it->next){
+							if(it->ack == 0)
+								break;
+								
+								
+						}
 					}
-					*/
+					else
+						debug_out(5, "GetConnectionBySocket != 0\n");
 					break;
 				case MW_NAK:
 					switch(trans->owner){
