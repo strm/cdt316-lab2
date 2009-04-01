@@ -14,6 +14,7 @@
 #include "../framework/hidden/msg.h"
 
 #define MW_IDENT	(-1)
+#define MW_WHOIS	(-2)
 
 void initSocketAddress(struct sockaddr_in *name, char *hostName, unsigned short int port);
 int CreateSocket(unsigned short int port);

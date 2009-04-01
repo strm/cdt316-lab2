@@ -102,16 +102,12 @@ void *ListeningThread(void *arg) {
 	int connectionSocket;
 	struct sockaddr connectInfo;
 	socklen_t connectInfoLength = sizeof(connectInfo);
-	int listenSocket = (int)((int *)arg);
+	int listenSocket = *((int *)arg);
 	struct timeval selectTimeout;
 
 	debug_out(5, "Listenthread has started\n");
-	fcntl(listenSocket, F_SETFL, O_NONBLOCK);
+	//fcntl(listenSocket, F_SETFL, O_NONBLOCK);
 
-	if(listen(listenSocket, 1) < 0) {
-		perror("listen: ");
-		//TODO: Add error handling here
-	}
 	FD_ZERO(&masterFdSet);
 	FD_ZERO(&clientSet);
 	FD_ZERO(&mwSet);
@@ -134,7 +130,7 @@ void *ListeningThread(void *arg) {
 			debug_out(5, "Could not create copy of connection list\n");
 		for(it = connections; it != NULL; it = it->next) {
 			FD_SET(it->socket, &readFdSet);
-			debug_out(5, "Listen: %d %s\n", it->socket, it->address);
+			//debug_out(5, "Listen: %d %s\n", it->socket, it->address);
 			count++;
 		}
 		DeleteConnectionList(&connections);
@@ -150,7 +146,7 @@ void *ListeningThread(void *arg) {
 		else {
 			for(i = 0; i < FD_SETSIZE; i++) {
 				if(FD_ISSET(i, &readFdSet)) {
-					debug_out(5, "Listen: fd_set(%d) is set\n", i);	
+					//debug_out(5, "Listen: fd_set(%d) is set\n", i);	
 					// New connection incoming
 					if(i == listenSocket) {
 						debug_out(5, "Listen: new connection incoming\n");
@@ -181,19 +177,38 @@ void *ListeningThread(void *arg) {
 					}
 					// Existing connection wishes to send something
 					else {
-						debug_out(5, "Listen: New data from existing connections\n");
+						//debug_out(5, "Listen: New data from existing connections\n");
 						recvBuf = malloc(sizeof(long));
-						if((nBytes = force_read(i, recvBuf, sizeof(long))) > 0) {
-							debug_out(5, "Listen: force_read returned successfully\n");
+						nBytes = force_read(i, recvBuf, sizeof(long));
+						if(nBytes > 0) {
+							switch(*((long *)recvBuf)) {
+								case MW_IDENT:
+									FD_SET(i, &mwSet);
+									FD_CLR(i, &masterFdSet);
+									break;
+								case MW_WHOIS:
+									break;
+								default: // Clients
+									if(ConnectionHandler(GET_BY_SOCKET, &conn, NULL, NULL, i) == 0) {
+										conn.numCmds = *((long *)recvBuf);
+										ConnectionHandler(REMOVE_BY_SOCKET, NULL, NULL, NULL, conn.socket);
+										ConnectionHandler(ADD_TO_LIST, &conn, NULL, NULL, NULL, 0);
+										debug_out(3, "[R] %d from '%s' (%d)\n", conn.numCmds, conn.address, conn.socket);
+									}
+									else {
+										debug_out(5, "[R] Unknown connection transmitted\n");
+									}
+									break;
+							}
+
+							/*
 							// We are about to receive stuff from a middleware
 							if(*((long *)recvBuf) == -1) {
-								debug_out(5, "Received send request from MW\n");
 								FD_SET(i, &mwSet);
 								FD_CLR(i, &masterFdSet);
 							}
 							// We are about to receive stuff from a client
 							else {
-								debug_out(5, "Listen: Received send request from a client\n");
 								if(ConnectionHandler(GET_BY_SOCKET, &conn, NULL, NULL, i) == 0) {
 									conn.numCmds = *((long *)recvBuf);
 									debug_out(3, "Received '%d' from '%d'\n", *((long *)recvBuf), i);
@@ -205,10 +220,26 @@ void *ListeningThread(void *arg) {
 								//FD_SET(i, &clientSet);
 								//FD_CLR(i, &masterFdSet);
 							}
+							*/
+						}
+						else if (nBytes == -1) {
+							perror("force_read");
+							FD_CLR(i, &readFdSet);
+							if(ConnectionHandler(REMOVE_BY_SOCKET, NULL, NULL, 0, i) == 0)
+								debug_out(5, "Removed socket %d from connection list\n", i);
+							else
+								debug_out(5, "Failed to remove interrupted connection\n");
+							/* TODO: Add error handling */
 						}
 						else {
-							debug_out(5, "Listen: Unknown error occured\n");
-							/* TODO: Add error handling */
+							debug_out(5, "Listen: force_read returned EOF, terminating connection\n");
+							FD_CLR(i, &readFdSet);
+							if(ConnectionHandler(REMOVE_BY_SOCKET, NULL, NULL, 0, i) == 0) {
+								debug_out(5, "Removed socket %d from connection list\n", i);
+							}
+							else {
+								debug_out(5, "Failed to remove interrupted connection\n");
+							}
 						}
 					}
 				}

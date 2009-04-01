@@ -52,7 +52,7 @@ int start_middleware(char *database) {
 	int conn_sock;
 	int conn_retries;
 	struct sockaddr_in hostInfo;
-	pthread_t listenThread;
+	//pthread_t listenThread;
 	connection conn;
 
 	if (myname[0] != '\0') {
@@ -78,7 +78,7 @@ int start_middleware(char *database) {
 	}
 
 	sin_port = ntohs(real.sin_port);
-	pthread_create(&listenThread, NULL, ListeningThread, (void *)sock);
+	//pthread_create(&listenThread, NULL, ListeningThread, (void *)sock);
 
 	for(ns_miss_count = 0, ns_iterator = 0; ns_miss_count < NS_LOOKUP_ATTEMPTS; ns_iterator++) {
 		sprintf(ns_entry, "%s%d", database, ns_iterator);
@@ -261,6 +261,7 @@ int main(void) {
 	long msg;
 	int mw_sock;
 	connection c;
+	pthread_t listenThread;
 
 	srand(time(NULL));
 	
@@ -268,6 +269,7 @@ int main(void) {
 	
 	mw_sock = start_middleware("MIDDLEWARE");
 	debug_out(2, "Middleware initialized, starting listening thread\n");
+	pthread_create(&listenThread, NULL, ListeningThread, (void *)&mw_sock);
 
 	while(1) {
 		for(i = 0; i < 20; i++) {
@@ -277,12 +279,12 @@ int main(void) {
 						NULL,
 						NULL,
 						i) == 0) {
-				msg = rand();
+				msg = (rand() % 100) + 1;
 				if(send(c.socket, &msg, sizeof(msg), 0) < 0) {
 					perror("send");
 				}
 				else {
-					debug_out(3, "Sent '%ld' to %d\n", msg, c.socket);
+					debug_out(3, "[S] %ld to '%s' (%d)\n", msg, c.address, c.socket);
 				}
 				sleep(2);
 			}
