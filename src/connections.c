@@ -7,6 +7,7 @@ void CreateConnectionInfo(connection *dest, int csock, char *addr, char conn_typ
 	dest->numCmds = cmds;
 	strncpy(dest->address, addr, ARG_SIZE);
 	dest->next = NULL;
+	dest->ack = 0;
 }
 
 int ConnectionHandler(char cmd, connection *c, connection **clist, char *addr, int sock) {
@@ -108,6 +109,7 @@ int CopyConnection(connection *src, connection *dest) {
 	dest->next = NULL;
 	name_len = strlen(src->address) + 1;
 	strncpy(dest->address, src->address, name_len);
+	dest->ack = src->ack;
 	return ret;
 }
 

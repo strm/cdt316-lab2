@@ -104,6 +104,8 @@ void *ListeningThread(void *arg) {
 	socklen_t connectInfoLength = sizeof(connectInfo);
 	int listenSocket = *((int *)arg);
 	struct timeval selectTimeout;
+	node *tmp_msg = NULL;
+	message_t msg_data;
 
 	debug_out(5, "Listenthread has started\n");
 	//fcntl(listenSocket, F_SETFL, O_NONBLOCK);
@@ -111,7 +113,7 @@ void *ListeningThread(void *arg) {
 	FD_ZERO(&masterFdSet);
 	FD_ZERO(&clientSet);
 	FD_ZERO(&mwSet);
-	
+
 
 	// The thread should wait for new messages when not processing something
 	while(1) {
@@ -151,28 +153,41 @@ void *ListeningThread(void *arg) {
 					if(i == listenSocket) {
 						debug_out(5, "Listen: new connection incoming\n");
 						connectionSocket = accept(listenSocket, &connectInfo, &connectInfoLength);
-
 						if(connectionSocket < 0) {
-							perror("accept: ");
-							//TODO: Add error handling here
+							perror("accept");
 						}
 						else {
-							FD_SET(connectionSocket, &masterFdSet);
-							printf("Listen: Adding new connection (%d) to list... ", connectionSocket);
-							CreateConnectionInfo(
-									&conn,
-									connectionSocket,
-									"Unknown",
-									TYPE_MIDDLEWARE,
-									0);
-							ConnectionHandler(
-									ADD_TO_LIST,
-									&conn,
-									NULL,
-									NULL,
-									0);
-							//ConnectionHandler(LIST_ADD_TO_LIST, connectionSocket, NULL, NULL, &connectInfo);
-							printf("connection added\n"); 
+							recvBuf = malloc(sizeof(long));
+							nBytes = force_read(i, recvBuf, sizeof(long));
+							if(nBytes > 0) {
+								if(*((long *)recvBuf) > 0) { // This is a client
+									msg_data.msgType = MW_TRANSACTION;
+									msg_data.owner = MSG_ME;
+									msg_data.socket = i;
+									msg_data.sizeOfData = *((long *)recvBuf);
+									tmp_msg = createNode(&msg_data);
+									globalMsg(MSG_PUSH, tmp_msg);
+								}
+								else {
+									FD_SET(connectionSocket, &masterFdSet);
+									CreateConnectionInfo(
+											&conn,
+											connectionSocket,
+											"Unknown",
+											TYPE_MIDDLEWARE,
+											0);
+									ConnectionHandler(
+											ADD_TO_LIST,
+											&conn,
+											NULL,
+											NULL,
+											0);
+									// Middleware connection here
+								}
+							}
+							else {
+								// Error reading, endpoint probably crashed or hanged up
+							}
 						}
 					}
 					// Existing connection wishes to send something
@@ -188,37 +203,40 @@ void *ListeningThread(void *arg) {
 									break;
 								case MW_WHOIS:
 									break;
-								default: // Clients
-									if(ConnectionHandler(GET_BY_SOCKET, &conn, NULL, NULL, i) == 0) {
+									/*default: // Clients
+										if(ConnectionHandler(GET_BY_SOCKET, &conn, NULL, NULL, i) == 0) {
 										conn.numCmds = *((long *)recvBuf);
-										ConnectionHandler(REMOVE_BY_SOCKET, NULL, NULL, NULL, conn.socket);
-										ConnectionHandler(ADD_TO_LIST, &conn, NULL, NULL, NULL, 0);
-										debug_out(3, "[R] %d from '%s' (%d)\n", conn.numCmds, conn.address, conn.socket);
+									//ConnectionHandler(REMOVE_BY_SOCKET, NULL, NULL, NULL, conn.socket);
+									//ConnectionHandler(ADD_TO_LIST, &conn, NULL, NULL, NULL, 0);
+									msg_data.msgType = MW_TRANSACTION;
+									msg_data.owner = MSG_ME;
+									msg_data.socket = conn.socket;
+									debug_out(3, "[R] %d from '%s' (%d)\n", conn.numCmds, conn.address, conn.socket);
 									}
 									else {
-										debug_out(5, "[R] Unknown connection transmitted\n");
+									debug_out(5, "[R] Unknown connection transmitted\n");
 									}
-									break;
+									break;*/
 							}
 
 							/*
 							// We are about to receive stuff from a middleware
 							if(*((long *)recvBuf) == -1) {
-								FD_SET(i, &mwSet);
-								FD_CLR(i, &masterFdSet);
+							FD_SET(i, &mwSet);
+							FD_CLR(i, &masterFdSet);
 							}
 							// We are about to receive stuff from a client
 							else {
-								if(ConnectionHandler(GET_BY_SOCKET, &conn, NULL, NULL, i) == 0) {
-									conn.numCmds = *((long *)recvBuf);
-									debug_out(3, "Received '%d' from '%d'\n", *((long *)recvBuf), i);
-								}
-								else {
-									debug_out(5, "Received message from unknown client\n");
-								}
-								//ConnectionHandler(LIST_REPLACE_ENTRY, 0, &tmp_conn, NULL);
-								//FD_SET(i, &clientSet);
-								//FD_CLR(i, &masterFdSet);
+							if(ConnectionHandler(GET_BY_SOCKET, &conn, NULL, NULL, i) == 0) {
+							conn.numCmds = *((long *)recvBuf);
+							debug_out(3, "Received '%d' from '%d'\n", *((long *)recvBuf), i);
+							}
+							else {
+							debug_out(5, "Received message from unknown client\n");
+							}
+							//ConnectionHandler(LIST_REPLACE_ENTRY, 0, &tmp_conn, NULL);
+							//FD_SET(i, &clientSet);
+							//FD_CLR(i, &masterFdSet);
 							}
 							*/
 						}
@@ -246,40 +264,40 @@ void *ListeningThread(void *arg) {
 			}
 		}
 
-/*		readFdSet = mwSet;
-		if(select(FD_SETSIZE, &readFdSet, NULL, NULL, &selectTimeout) < 0) {
-			perror("select: ");
-			//TODO: Add error handling here
+		/*		readFdSet = mwSet;
+					if(select(FD_SETSIZE, &readFdSet, NULL, NULL, &selectTimeout) < 0) {
+					perror("select: ");
+		//TODO: Add error handling here
 		}
 		// Iterate over all incoming middleware messages
 		for(i = 0; i < FD_SETSIZE; i++)	{
-			if(FD_ISSET(i, &readFdSet)) {
-				recvBuf = malloc(sizeof(message_t));
-				if((nBytes = force_read(i, recvBuf, sizeof(message_t))) > 0) {
-					switch(HandleMessage((message_t *)recvBuf, i, &mwSet)) {
-						case MW_EOF:
-							FD_SET(i, &masterFdSet);
-							FD_CLR(i, &mwSet);
-							break;
-					}
-				}
-			}
+		if(FD_ISSET(i, &readFdSet)) {
+		recvBuf = malloc(sizeof(message_t));
+		if((nBytes = force_read(i, recvBuf, sizeof(message_t))) > 0) {
+		switch(HandleMessage((message_t *)recvBuf, i, &mwSet)) {
+		case MW_EOF:
+		FD_SET(i, &masterFdSet);
+		FD_CLR(i, &mwSet);
+		break;
+		}
+		}
+		}
 		}
 
 		// Iterate over all incoming client messages
 		readFdSet = clientSet;
 		if(select(FD_SETSIZE, &readFdSet, NULL, NULL, &selectTimeout) < 0) {
-			perror("select: ");
-			//TODO: Add error handling here
+		perror("select: ");
+		//TODO: Add error handling here
 		}
 		for(i = 0; i < FD_SETSIZE; i++) {
-			if(FD_ISSET(i, &readFdSet)) {
-				recvBuf = malloc(sizeof(command));
-				if((nBytes = force_read(i, recvBuf, sizeof(command))) > 0) {
-					//TODO: Add client stuff here
-					printf("CMD: %s ", ((command *)recvBuf)->arg1);
-				}
-			}
+		if(FD_ISSET(i, &readFdSet)) {
+		recvBuf = malloc(sizeof(command));
+		if((nBytes = force_read(i, recvBuf, sizeof(command))) > 0) {
+		//TODO: Add client stuff here
+		printf("CMD: %s ", ((command *)recvBuf)->arg1);
+		}
+		}
 		}*/
 	}
 	return (void *)0;
