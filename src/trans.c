@@ -10,8 +10,10 @@
 
 int isTransaction(transNode * list, int id){
 	while( list != NULL ){
-		if(list->id == id)
+		if(list->id == id){
+			debug_out(3, "isTransaction match found %d = %d", list->id, id );
 			return TRUE;
+		}
 		else
 			list = list->next;
 	}

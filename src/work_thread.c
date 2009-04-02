@@ -55,26 +55,31 @@ void * worker_thread ( void * arg ){
 				continue;
 			}
 			else{
-				debug_out(5, "Message recived\n %d", tmp->msg.msgType);
+				debug_out(5, "Message recived %d\n", tmp->msg.msgType);
 				if(isTransaction(transList, tmp->msg.msgId)){
 					trans = getTransaction(transList, tmp->msg.msgId);
 					debug_out(3, "getTransaction(%d)\n", trans->id);
 				}
 				else if(tmp->msg.msgType == MW_TRANSACTION){
 					//create new transaction
-					debug_out(5, "Creating new transaction\n");
-					trans = createTransaction( globalId(ID_GET, 0 ));
+					if(tmp->msg.owner == MSG_ME)
+						trans = createTransaction( globalId(ID_GET, 0 ));
+					else{
+						trans = createTransaction(tmp->msg.msgId);
+						globalId(ID_CHANGE, tmp->msg.msgId);
+					}
+					debug_out(5, "Creating new transaction(%d)\n", trans->id);
 					if(!addTransaction( &transList, trans))
 						debug_out(5, "Failed to add transaction to list\n");
 					else{
 						debug_out(3, "Setting up new transaction\n");
 						trans->owner = tmp->msg.owner;
 						if(ConnectionHandler(COPY_LIST, NULL, &(trans->conList), NULL, 0) != 0)
-							debug_out(5, "Error\n");
+							debug_out(5, "Error %d\n", trans->conList);
 						else
 							debug_out(3, "We have a list\n");
-						trans->id = tmp->msg.msgId;
 						trans->socket = tmp->msg.socket;
+						if(trans->owner == MSG_ME){
 						/**
 						 * READ FROM CLIENT HERE
 						 * TODO TODO TODO TODO
@@ -94,6 +99,7 @@ void * worker_thread ( void * arg ){
 						}
 						if(counter == tmp->msg.sizeOfData)
 							tmp->msg.endOfMsg = MW_EOF;
+						}
 					}
 				}
 			}
@@ -124,23 +130,26 @@ void * worker_thread ( void * arg ){
 													 * Send Message here
 													 */
 													if(iter->next == NULL)
-														newMsg.endOfMsg = 1;
+														newMsg.endOfMsg = MW_EOF;
 													for(it = trans->conList; it != NULL; it = it->next) {
 													//for(n = 0; n < trans->conList.nConnections; n++){
-														mw_send(it->socket, &newMsg, sizeof(newMsg));
+
+												debug_out(3, "Gonna send to socket %d\n", it->socket);
+														mw_send(it->socket, &newMsg, sizeof(message_t));
 													}
 													//clean up
 													newMsg.sizeOfData = -1;
 												}
 											}
 											if(newMsg.endOfMsg != 1){
-												newMsg.endOfMsg = 1;
+												newMsg.endOfMsg = MW_EOF;
 												for(it = trans->conList; it != NULL; it = it->next) {
 												//for(n = 0; n < trans->conList.nConnections; n++){
-													mw_send(it->socket, &newMsg, sizeof(newMsg));
+													mw_send(it->socket, &newMsg, sizeof(message_t));
 												}
 											}
 										}
+										debug_out(5, "Local Parse(DONE) send to client(DONE)\n");
 										break;
 									case LOCALPARSE_FAILED:
 										//unrecoverable error
@@ -166,6 +175,7 @@ void * worker_thread ( void * arg ){
 							}
 							break;
 						default:
+							debug_out(4, "Transaction recived from mw\n");
 							//from middleware;
 							for ( n = 0; n < tmp->msg.sizeOfData; n++ )
 								varListPush(tmp->msg.data[n], (&trans->parsed));

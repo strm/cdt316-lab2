@@ -9,6 +9,5 @@ PRINT foo
 print bar
 ASSIGN fish 0
 add fish girth 10
-SLEEP 5
 DELETE girth
 QUIT
