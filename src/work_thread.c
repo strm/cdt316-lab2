@@ -36,8 +36,8 @@ void * worker_thread ( void * arg ){
 	sock = (int ) (arg);
 	node * tmp;
 	connection *it;
-	int n, counter;
-	transNode * transList;
+	int n, counter, res;
+	transNode * transList = NULL;
 	transNode * trans; //TODO does stuff get lost?
 	message_t newMsg;
 	varList *iter;
@@ -48,7 +48,7 @@ void * worker_thread ( void * arg ){
 		 * Read message queue
 		 */
 		if ( globalMsg( MSG_LOCK, MSG_NO_ARG ) == NULL ){
-			//locked
+			//lockedi
 			tmp = globalMsg( MSG_POP, MSG_NO_ARG );
 			if( tmp == NULL ){
 				globalMsg( MSG_UNLOCK, MSG_NO_ARG );
@@ -56,8 +56,10 @@ void * worker_thread ( void * arg ){
 			}
 			else{
 				debug_out(5, "Message recived\n %d", tmp->msg.msgType);
-				if(isTransaction(transList, tmp->msg.msgId))
+				if(isTransaction(transList, tmp->msg.msgId)){
 					trans = getTransaction(transList, tmp->msg.msgId);
+					debug_out(3, "getTransaction(%d)\n", trans->id);
+				}
 				else if(tmp->msg.msgType == MW_TRANSACTION){
 					//create new transaction
 					debug_out(5, "Creating new transaction\n");
@@ -77,8 +79,21 @@ void * worker_thread ( void * arg ){
 						 * READ FROM CLIENT HERE
 						 * TODO TODO TODO TODO
 						 */
-						while(1)
-						printf("read from client %d", tmp->msg.sizeOfData);
+						counter = 0;
+						printf("read from client %d\n", tmp->msg.sizeOfData);
+						for(n = tmp->msg.sizeOfData; n; n--){
+							res = read(tmp->msg.socket, &cmd, sizeof(command));
+							if (res < sizeof(command)){
+								my_perror(2, "force_read");
+							}
+							else{
+								cmd.op = ntohl(cmd.op);
+								varListPush(cmd,(&trans->unparsed));
+								counter++;
+							}
+						}
+						if(counter == tmp->msg.sizeOfData)
+							tmp->msg.endOfMsg = MW_EOF;
 					}
 				}
 			}
@@ -87,8 +102,6 @@ void * worker_thread ( void * arg ){
 					switch(trans->owner){
 						case MSG_ME:
 							//from client
-							for( n = 0; n < tmp->msg.sizeOfData; n++ )
-								varListPush(tmp->msg.data[n],(&trans->unparsed));
 							if(tmp->msg.endOfMsg == MW_EOF){
 								switch(ParseTransaction(&trans)){
 									case LOCALPARSE_SUCCESS:

@@ -35,4 +35,5 @@ int push(node ** start, node * new_node);
 node * pop (node ** start);
 node * createNode(message_t * msg);
 message_t * createMessage(int cmd, char arg1[ARG_SIZE], char arg2[ARG_SIZE], char arg3[ARG_SIZE], int eof);
+message_t newMsg(void);
 #endif
