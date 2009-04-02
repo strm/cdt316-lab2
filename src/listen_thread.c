@@ -198,6 +198,7 @@ void *ListeningThread(void *arg) {
 					// Connected middleware wants to send stuff
 					else {
 						recvBuf = malloc(sizeof(message_t));
+						debug_out(3, "Reading from another middleware\n");
 						nBytes = force_read(i, recvBuf, sizeof(message_t));
 						if(nBytes > 0) {
 							HandleMessage((message_t *)recvBuf, i, &readFdSet);
