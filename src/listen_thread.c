@@ -93,10 +93,10 @@ int HandleMessage(message_t *msg, int from, fd_set *fdSet) {
 }
 
 void *ListeningThread(void *arg) {
-	fd_set masterFdSet, readFdSet; /* Used by select */
-	fd_set clientSet, mwSet;
+	fd_set readFdSet; /* Used by select */
 	int i, nBytes, count, ret;
 	void * recvBuf;
+	long first_recv;
 	connection *connections;
 	connection conn, *it;
 	int connectionSocket;
@@ -108,12 +108,6 @@ void *ListeningThread(void *arg) {
 	message_t msg_data;
 
 	debug_out(5, "Listenthread has started\n");
-	//fcntl(listenSocket, F_SETFL, O_NONBLOCK);
-
-	FD_ZERO(&masterFdSet);
-	FD_ZERO(&clientSet);
-	FD_ZERO(&mwSet);
-
 
 	// The thread should wait for new messages when not processing something
 	while(1) {
@@ -132,7 +126,6 @@ void *ListeningThread(void *arg) {
 			debug_out(5, "Could not create copy of connection list\n");
 		for(it = connections; it != NULL; it = it->next) {
 			FD_SET(it->socket, &readFdSet);
-			//debug_out(5, "Listen: %d %s\n", it->socket, it->address);
 			count++;
 		}
 		DeleteConnectionList(&connections);
@@ -148,7 +141,6 @@ void *ListeningThread(void *arg) {
 		else {
 			for(i = 0; i < FD_SETSIZE; i++) {
 				if(FD_ISSET(i, &readFdSet)) {
-					//debug_out(5, "Listen: fd_set(%d) is set\n", i);	
 					// New connection incoming
 					if(i == listenSocket) {
 						debug_out(5, "Listen: new connection incoming\n");
@@ -161,18 +153,20 @@ void *ListeningThread(void *arg) {
 							debug_out(3, "Waiting for connection identification\n");
 							nBytes = force_read(connectionSocket, recvBuf, sizeof(long));
 							if(nBytes > 0) {
-								if(*((long *)recvBuf) > 0) { // This is a client
+								first_recv = ntohl(*((long *)recvBuf));
+								if(first_recv > 0) { // This is a client
 									debug_out(3, "Client connection established\n");
+									msg_data = newMsg();
 									msg_data.msgType = MW_TRANSACTION;
 									msg_data.owner = MSG_ME;
 									msg_data.socket = connectionSocket;
-									msg_data.sizeOfData = *((long *)recvBuf);
+									msg_data.sizeOfData = first_recv;
 									tmp_msg = createNode(&msg_data);
 									globalMsg(MSG_PUSH, tmp_msg);
 									debug_out(3, "Pushed shit on the queue\n");
 								}
 								else {
-									FD_SET(connectionSocket, &masterFdSet);
+									FD_SET(connectionSocket, &readFdSet);
 									CreateConnectionInfo(
 											&conn,
 											connectionSocket,
@@ -190,21 +184,18 @@ void *ListeningThread(void *arg) {
 							}
 							else {
 								debug_out(3, "This reading thing is hard\n");
-								debug_out(3, "Read returned '%d' '%ld'\n", nBytes, *((long *)recvBuf));
+								debug_out(3, "Read returned '%d' '%ld'\n", nBytes, (*((long *)recvBuf) = *((long *)recvBuf)));
 								// Error reading, endpoint probably crashed or hanged up
 							}
 						}
 					}
-					// Existing connection wishes to send something
+					// Connected middleware wants to send stuff
 					else {
-						//debug_out(5, "Listen: New data from existing connections\n");
-						recvBuf = malloc(sizeof(long));
-						nBytes = force_read(i, recvBuf, sizeof(long));
+						recvBuf = malloc(sizeof(message_t));
+						nBytes = force_read(i, recvBuf, sizeof(message_t));
 						if(nBytes > 0) {
 							switch(*((long *)recvBuf)) {
 								case MW_IDENT:
-									FD_SET(i, &mwSet);
-									FD_CLR(i, &masterFdSet);
 									break;
 								case MW_WHOIS:
 									break;

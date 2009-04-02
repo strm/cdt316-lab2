@@ -21,9 +21,11 @@ char DB_GLOBAL[ARG_SIZE];
 
 void ParseAddress(char *ns_entry, struct sockaddr_in *hostInfo) {
 	char *conn_address;
+	char entry_copy[ARG_SIZE];
 	int conn_port;
 
-	conn_address = strtok(ns_entry, ":");
+	strncpy(entry_copy, ns_entry, ARG_SIZE);
+	conn_address = strtok(entry_copy, ":");
 	conn_port = atoi(strtok(NULL, ":"));
 	initSocketAddress(hostInfo, conn_address, conn_port);
 }
@@ -52,7 +54,6 @@ int start_middleware(char *database) {
 	int conn_sock;
 	int conn_retries;
 	struct sockaddr_in hostInfo;
-	//pthread_t listenThread;
 	connection conn;
 
 	if (myname[0] != '\0') {
@@ -78,7 +79,6 @@ int start_middleware(char *database) {
 	}
 
 	sin_port = ntohs(real.sin_port);
-	//pthread_create(&listenThread, NULL, ListeningThread, (void *)sock);
 
 	for(ns_miss_count = 0, ns_iterator = 0; ns_miss_count < NS_LOOKUP_ATTEMPTS; ns_iterator++) {
 		sprintf(ns_entry, "%s%d", database, ns_iterator);
@@ -103,7 +103,6 @@ int start_middleware(char *database) {
 								NULL,
 								NULL,
 								0);
-						//ConnectionHandler(LIST_ADD_TO_LIST, conn_sock, NULL, NULL,(struct sockaddr *)&hostInfo);
 						break;
 					}
 					else {
@@ -144,7 +143,6 @@ int start_middleware(char *database) {
 								NULL,
 								NULL,
 								0);
-								//ConnectionHandler(LIST_ADD_TO_LIST, conn_sock, NULL, NULL, (struct sockaddr *)&hostInfo);
 							}
 							// Another middleware stole our entry and disappeared, ignore the slot and let
 							// someone else take it later
@@ -173,7 +171,6 @@ int start_middleware(char *database) {
 								NULL,
 								NULL,
 								0);
-							//ConnectionHandler(LIST_ADD_TO_LIST, conn_sock, NULL, NULL, (struct sockaddr *)&hostInfo);
 						}
 						else {
 							if(!delete_entry("nameserver", ns_entry))
@@ -216,7 +213,6 @@ int start_middleware(char *database) {
 								NULL,
 								NULL,
 								0);
-						//ConnectionHandler(LIST_ADD_TO_LIST, conn_sock, NULL, NULL, (struct sockaddr *)&hostInfo);
 					}
 					// Another middleware stole our entry and disappeared, ignore the slot and let
 					// someone else take it later
@@ -282,6 +278,7 @@ int main(void) {
 						NULL,
 						i) == 0) {
 				msg = (rand() % 100) + 1;
+				msg = htonl(msg);
 				if(send(c.socket, &msg, sizeof(msg), 0) < 0) {
 					perror("send");
 				}
@@ -294,7 +291,6 @@ int main(void) {
 	}	
 
 	pthread_join(work, NULL);
-	//pthread_join(listenThread, NULL);
 	return 0;
 }
 
