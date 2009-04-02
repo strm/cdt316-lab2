@@ -163,13 +163,16 @@ int CopyList(connection *src, connection **dest) {
 
 	for(it = src; it != NULL; it = it->next) {
 		ret = AddConnection(dest, it);
+		printf("Added a new connection to list copy\n");
 		if(ret != 0) {
 			printf("CopyList: AddConnection failed\n");
 			break;
 		}
 	}
-	if(ret == -1)
+	if(ret == -1) {
 		ret = DeleteConnectionList(dest);
+		printf( "Some error has occured, deleting list copy\n");
+	}
 
 	return ret;
 }
