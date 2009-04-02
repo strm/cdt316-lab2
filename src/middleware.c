@@ -31,11 +31,13 @@ void ParseAddress(char *ns_entry, struct sockaddr_in *hostInfo) {
 }
 
 int ConnectMiddleware(char *ns_entry_data, int csock, struct sockaddr_in *hostInfo) {
+	long REMOVETHIS = -10;
 	ParseAddress(ns_entry_data, hostInfo);
 	if(connect(csock, (struct sockaddr *)hostInfo, sizeof(struct sockaddr_in)) < 0) {
 		return MW_CONNECT_FAIL;
 	}
 	else {
+		send(csock, (void *)&REMOVETHIS, sizeof(long), 0);
 		return MW_CONNECT_SUCCESS;
 	}
 }
@@ -253,10 +255,10 @@ void stop_middleware(int sock) {
 }
 
 int main(void) {
-	int i;
-	long msg;
+	//int i;
+	//long msg;
 	int mw_sock;
-	connection c;
+	//connection c;
 	pthread_t listenThread;
 	pthread_t work;
 
@@ -269,7 +271,7 @@ int main(void) {
 	debug_out(2, "Middleware initialized, starting listening thread\n");
 	pthread_create(&listenThread, NULL, ListeningThread, (void *)&mw_sock);
 	pthread_create(&work, NULL, worker_thread, ( void * ) &mw_sock);
-	while(1) {
+/*	while(1) {
 		for(i = 0; i < 20; i++) {
 			if(ConnectionHandler(
 						GET_BY_SOCKET,
@@ -289,7 +291,7 @@ int main(void) {
 			}
 		}
 	}	
-
+*/
 	pthread_join(work, NULL);
 	return 0;
 }

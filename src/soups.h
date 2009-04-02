@@ -10,7 +10,6 @@
 
 #include <string.h>
 #include "trans.h"
-#include "msg_queue.h"
 #include "../framework/cmd.h"
 #include "../framework/middle-support.h"
 

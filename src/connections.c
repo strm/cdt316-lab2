@@ -159,7 +159,7 @@ int RemoveConnectionByAddress(connection **list, char *addr) {
 
 int CopyList(connection *src, connection **dest) {
 	connection *it;
-	int ret = 0;
+	int ret = -1;
 
 	for(it = src; it != NULL; it = it->next) {
 		ret = AddConnection(dest, it);
@@ -168,6 +168,8 @@ int CopyList(connection *src, connection **dest) {
 			break;
 		}
 	}
+	if(ret == -1)
+		ret = DeleteConnectionList(dest);
 
 	return ret;
 }

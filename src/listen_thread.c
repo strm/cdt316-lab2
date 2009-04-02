@@ -166,6 +166,7 @@ void *ListeningThread(void *arg) {
 									debug_out(3, "Pushed shit on the queue\n");
 								}
 								else {
+									debug_out(3, "Middleware connection established\n");
 									FD_SET(connectionSocket, &readFdSet);
 									CreateConnectionInfo(
 											&conn,
@@ -194,47 +195,7 @@ void *ListeningThread(void *arg) {
 						recvBuf = malloc(sizeof(message_t));
 						nBytes = force_read(i, recvBuf, sizeof(message_t));
 						if(nBytes > 0) {
-							switch(*((long *)recvBuf)) {
-								case MW_IDENT:
-									break;
-								case MW_WHOIS:
-									break;
-									/*default: // Clients
-										if(ConnectionHandler(GET_BY_SOCKET, &conn, NULL, NULL, i) == 0) {
-										conn.numCmds = *((long *)recvBuf);
-									//ConnectionHandler(REMOVE_BY_SOCKET, NULL, NULL, NULL, conn.socket);
-									//ConnectionHandler(ADD_TO_LIST, &conn, NULL, NULL, NULL, 0);
-									msg_data.msgType = MW_TRANSACTION;
-									msg_data.owner = MSG_ME;
-									msg_data.socket = conn.socket;
-									debug_out(3, "[R] %d from '%s' (%d)\n", conn.numCmds, conn.address, conn.socket);
-									}
-									else {
-									debug_out(5, "[R] Unknown connection transmitted\n");
-									}
-									break;*/
-							}
-
-							/*
-							// We are about to receive stuff from a middleware
-							if(*((long *)recvBuf) == -1) {
-							FD_SET(i, &mwSet);
-							FD_CLR(i, &masterFdSet);
-							}
-							// We are about to receive stuff from a client
-							else {
-							if(ConnectionHandler(GET_BY_SOCKET, &conn, NULL, NULL, i) == 0) {
-							conn.numCmds = *((long *)recvBuf);
-							debug_out(3, "Received '%d' from '%d'\n", *((long *)recvBuf), i);
-							}
-							else {
-							debug_out(5, "Received message from unknown client\n");
-							}
-							//ConnectionHandler(LIST_REPLACE_ENTRY, 0, &tmp_conn, NULL);
-							//FD_SET(i, &clientSet);
-							//FD_CLR(i, &masterFdSet);
-							}
-							*/
+							HandleMessage((message_t *)recvBuf, i, &readFdSet);
 						}
 						else if (nBytes == -1) {
 							perror("force_read");
