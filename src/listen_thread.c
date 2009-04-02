@@ -28,7 +28,9 @@ int HandleMessage(message_t *msg, int from, fd_set *fdSet) {
 				// if (our ID = their ID - 1): Someone else is doing a transaction, increase our ID to compensate
 				// if (our ID < their ID - 1): We have missed some transaction, lock down and send a sync message to them
 				if(msg->owner == msg->msgId - 1) {
+					debug_out(3, "msg->owner == msg->msgId - 1\n");
 					if(globalId(ID_CHECK, msg->msgId)) {
+						debug_out(3, "globalId(ID_CHECK, msg->msgId\n");
 						globalId(ID_CHANGE, msg->owner);
 						newNode = createNode(msg);
 						globalMsg(MSG_LOCK, MSG_NO_ARG);
@@ -37,7 +39,9 @@ int HandleMessage(message_t *msg, int from, fd_set *fdSet) {
 					}
 				}
 				else if (msg->owner < msg->msgId - 1) {
+					debug_out(3, "msg->owner < msg->msgId -1\n");
 					if(globalId(ID_CHECK, msg->msgId)) {
+						debug_out(3, "globalId(ID_CHECK, msg->msgId\n");
 						tmp.msgType = MW_SYNCHRONIZE;
 						tmp.endOfMsg = TRUE;
 						// TODO: THIS REQUIRES LOGGING FEATURES!!!
@@ -45,6 +49,7 @@ int HandleMessage(message_t *msg, int from, fd_set *fdSet) {
 					// THIS IS THE DANGEROUS THING WHERE THINGS REALLY WENT TOTALLY WRONG AND WE HAVE TO SYNC THINGS!!!
 				}
 				else {
+					debug_out(3, "msg->owner > msg->msgId -1\n");
 					newNode = createNode(msg);
 					globalMsg(MSG_LOCK, MSG_NO_ARG);
 					globalMsg(MSG_PUSH, newNode);
