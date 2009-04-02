@@ -129,7 +129,6 @@ void *ListeningThread(void *arg) {
 					&connections,
 					NULL,
 					0) != 0) 
-			debug_out(5, "Could not create copy of connection list\n");
 		for(it = connections; it != NULL; it = it->next) {
 			FD_SET(it->socket, &readFdSet);
 			count++;
@@ -173,7 +172,6 @@ void *ListeningThread(void *arg) {
 								}
 								else {
 									debug_out(3, "Middleware connection established\n");
-									FD_SET(connectionSocket, &readFdSet);
 									CreateConnectionInfo(
 											&conn,
 											connectionSocket,
@@ -231,39 +229,39 @@ void *ListeningThread(void *arg) {
 		/*		readFdSet = mwSet;
 					if(select(FD_SETSIZE, &readFdSet, NULL, NULL, &selectTimeout) < 0) {
 					perror("select: ");
-		//TODO: Add error handling here
-		}
-		// Iterate over all incoming middleware messages
-		for(i = 0; i < FD_SETSIZE; i++)	{
-		if(FD_ISSET(i, &readFdSet)) {
-		recvBuf = malloc(sizeof(message_t));
-		if((nBytes = force_read(i, recvBuf, sizeof(message_t))) > 0) {
-		switch(HandleMessage((message_t *)recvBuf, i, &mwSet)) {
-		case MW_EOF:
-		FD_SET(i, &masterFdSet);
-		FD_CLR(i, &mwSet);
-		break;
-		}
-		}
-		}
-		}
+//TODO: Add error handling here
+}
+// Iterate over all incoming middleware messages
+for(i = 0; i < FD_SETSIZE; i++)	{
+if(FD_ISSET(i, &readFdSet)) {
+recvBuf = malloc(sizeof(message_t));
+if((nBytes = force_read(i, recvBuf, sizeof(message_t))) > 0) {
+switch(HandleMessage((message_t *)recvBuf, i, &mwSet)) {
+case MW_EOF:
+FD_SET(i, &masterFdSet);
+FD_CLR(i, &mwSet);
+break;
+}
+}
+}
+}
 
-		// Iterate over all incoming client messages
-		readFdSet = clientSet;
-		if(select(FD_SETSIZE, &readFdSet, NULL, NULL, &selectTimeout) < 0) {
-		perror("select: ");
-		//TODO: Add error handling here
-		}
-		for(i = 0; i < FD_SETSIZE; i++) {
-		if(FD_ISSET(i, &readFdSet)) {
-		recvBuf = malloc(sizeof(command));
-		if((nBytes = force_read(i, recvBuf, sizeof(command))) > 0) {
-		//TODO: Add client stuff here
-		printf("CMD: %s ", ((command *)recvBuf)->arg1);
-		}
-		}
-		}*/
-	}
+// Iterate over all incoming client messages
+readFdSet = clientSet;
+if(select(FD_SETSIZE, &readFdSet, NULL, NULL, &selectTimeout) < 0) {
+perror("select: ");
+//TODO: Add error handling here
+}
+for(i = 0; i < FD_SETSIZE; i++) {
+if(FD_ISSET(i, &readFdSet)) {
+recvBuf = malloc(sizeof(command));
+if((nBytes = force_read(i, recvBuf, sizeof(command))) > 0) {
+//TODO: Add client stuff here
+printf("CMD: %s ", ((command *)recvBuf)->arg1);
+}
+}
+}*/
+}
 	return (void *)0;
 }
 
