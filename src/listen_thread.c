@@ -84,6 +84,7 @@ int HandleMessage(message_t *msg, int from, fd_set *fdSet) {
 		}
 	}
 	else { // The message id was lower then we expected
+		debug_out(3, "undefined stuff happening\n");
 		tmp.msgId = globalId(ID_GET, 0);
 		tmp.msgType = MW_NAK;
 		tmp.endOfMsg = TRUE;
