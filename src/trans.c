@@ -129,7 +129,7 @@ int varListPush(command data, varList ** arg){
 	varList * cur;
 	tmp->data = data;
 	tmp->next = NULL;
-	printf("push(%d)\n", data.op);
+	printf("push(%d %s)\n", data.op, data.arg1);
 	if(*arg == NULL){
 		printf("First\n");
 		(*arg) = tmp;

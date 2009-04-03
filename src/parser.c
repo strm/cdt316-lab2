@@ -10,7 +10,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include "msg_queue.h"
-
+#include "work_thread.h"
 /*
  * Get a list of all used variables in transaction
  */
@@ -215,7 +215,7 @@ int localParse(varList ** var, varList * trans){
 	while ( iter != NULL ){
 		if( strcmp(iter->data.arg2, "DELETE") == 0 ){
 			iter->data.op = DELETE;
-			strcpy(iter->data.arg2, "DELETE(1)");
+			strcpy(iter->data.arg2, "\0");
 		}
 		iter = iter->next;
 	}
@@ -269,9 +269,9 @@ int sendResponse(transNode * trans){
 	varList * iter = trans->unparsed;
 	response rsp;
 	int nRsp = 0;
-		debug_out(5, "Sending all prints to client %d \n", trans->owner);
 	if(trans->owner == MSG_ME && iter != NULL){
 		//get number of responses needed
+		debug_out(5, "Sending all prints to client %d \n", trans->owner);
 		while(iter != NULL){
 			if(iter->data.op == PRINT)
 				nRsp++;
@@ -282,6 +282,7 @@ int sendResponse(transNode * trans){
 			/**
 			 * Send amount of responses to client
 			 */
+			nRsp = ntohl(nRsp);
 			if(send(trans->socket, &nRsp, sizeof(int), 0) == -1){
 				debug_out(5, "send to client (failed)\n");
 				return 0;
@@ -291,7 +292,7 @@ int sendResponse(transNode * trans){
 				while(iter != NULL){
 					if(iter->data.op == PRINT){
 						rsp.seq = 0;
-						rsp.is_message = 1;
+						rsp.is_message = 0;
 						rsp.is_error = 0;
 						//check what type of print
 						if(is_entry(iter->data.arg2))

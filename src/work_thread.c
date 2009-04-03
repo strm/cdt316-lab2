@@ -188,8 +188,9 @@ void * worker_thread ( void * arg ){
 							debug_out(4, "Transaction recived from mw %d\n", tmp->msg.sizeOfData);
 							//from middleware;
 							for ( n = 0; n < tmp->msg.sizeOfData; n++ ){
+								debug_out(2, "trying to Add %s to list", tmp->msg.data[n].arg1);
 								varListPush(tmp->msg.data[n], (&trans->parsed));
-								debug_out(2, "Added %s to list", tmp->msg.data[n]);
+								debug_out(2, "Added %s to list", tmp->msg.data[n].arg1);
 							}
 							if(tmp->msg.endOfMsg == MW_EOF){
 								//Try to lockvariables
