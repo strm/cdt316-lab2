@@ -11,12 +11,12 @@
 #include "listen_thread.h"
 #include <time.h>
 
-int HandleMessage(message_t *msg, int from, fd_set *fdSet) {
+int HandleMessage(message_t *msg, int from) {
 	int ret = 0;
 	node *newNode;
-	message_t tmp;
+	//message_t tmp;
 
-	if(globalId(ID_CHECK, msg->msgId)) {
+	//if(globalId(ID_CHECK, msg->msgId)) {
 		if(msg->endOfMsg) ret = MW_EOF;
 	
 		switch(msg->msgType) {
@@ -27,18 +27,25 @@ int HandleMessage(message_t *msg, int from, fd_set *fdSet) {
 				// Check if we need to synchronize:
 				// if (our ID = their ID - 1): Someone else is doing a transaction, increase our ID to compensate
 				// if (our ID < their ID - 1): We have missed some transaction, lock down and send a sync message to them
-				if(msg->owner == msg->msgId - 1) {
-					debug_out(3, "msg->owner == msg->msgId - 1\n");
-					if(globalId(ID_CHECK, msg->msgId)) {
-						debug_out(3, "globalId(ID_CHECK, msg->msgId\n");
+				//if(msg->owner == msg->msgId - 1) {
+					//debug_out(3, "msg->owner == msg->msgId - 1\n");
+					//if(globalId(ID_CHECK, ++msg->msgId)) {
+						debug_out(4, "Got %d %s %s %s\n",
+								msg->data[0].op,
+								msg->data[0].arg1,
+								msg->data[0].arg2,
+								msg->data[0].arg3);
 						globalId(ID_CHANGE, msg->owner);
 						newNode = createNode(msg);
 						globalMsg(MSG_LOCK, MSG_NO_ARG);
 						globalMsg(MSG_PUSH, newNode);
 						globalMsg(MSG_UNLOCK, MSG_NO_ARG);
-					}
-				}
-				else if (msg->owner < msg->msgId - 1) {
+					/*}
+					else {
+						debug_out(3, "Failed ID_CHECK\n");
+					}*/
+				//}
+				/*else if (msg->owner < msg->msgId - 1) {
 					debug_out(3, "msg->owner < msg->msgId -1\n");
 					if(globalId(ID_CHECK, msg->msgId)) {
 						debug_out(3, "globalId(ID_CHECK, msg->msgId\n");
@@ -47,14 +54,14 @@ int HandleMessage(message_t *msg, int from, fd_set *fdSet) {
 						// TODO: THIS REQUIRES LOGGING FEATURES!!!
 					}
 					// THIS IS THE DANGEROUS THING WHERE THINGS REALLY WENT TOTALLY WRONG AND WE HAVE TO SYNC THINGS!!!
-				}
-				else {
+				}*/
+				/*else {
 					debug_out(3, "msg->owner > msg->msgId -1\n");
 					newNode = createNode(msg);
 					globalMsg(MSG_LOCK, MSG_NO_ARG);
 					globalMsg(MSG_PUSH, newNode);
 					globalMsg(MSG_UNLOCK, MSG_NO_ARG);
-				}
+				}*/
 				break;
 			case MW_SYNCHRONIZE:
 				if(globalId(ID_CHECK, msg->msgId)) { // everything seems to be in order
@@ -76,14 +83,11 @@ int HandleMessage(message_t *msg, int from, fd_set *fdSet) {
 						NULL,
 						NULL,
 						from);
-				//ConnectionHandler(LIST_REMOVE, from, NULL, NULL, NULL);
-				if(fdSet != NULL)
-					FD_CLR(from, fdSet);
 				close(from);
 				break;
 		}
-	}
-	else { // The message id was lower then we expected
+	//}
+	/*else { // The message id was lower then we expected
 		debug_out(3, "undefined stuff happening\n");
 		tmp.msgId = globalId(ID_GET, 0);
 		tmp.msgType = MW_NAK;
@@ -93,7 +97,7 @@ int HandleMessage(message_t *msg, int from, fd_set *fdSet) {
 		if(send(from, (void *)&tmp, sizeof(message_t), 0) < 0) {
 			perror("send: ");
 		}
-	}
+	}*/
 
 	return ret;
 }
@@ -123,18 +127,19 @@ void *ListeningThread(void *arg) {
 		FD_ZERO(&readFdSet);
 		FD_SET(listenSocket, &readFdSet);
 
-		if(ConnectionHandler(
+		ConnectionHandler(
 					COPY_LIST,
 					NULL,
 					&connections,
 					NULL,
-					0) != 0) 
+					0);
 		for(it = connections; it != NULL; it = it->next) {
 			FD_SET(it->socket, &readFdSet);
 			count++;
 		}
 		DeleteConnectionList(&connections);
 
+		//debug_out(3, "Entering selective state with %d connections\n", count);
 		ret = select(FD_SETSIZE, &readFdSet, NULL, NULL, &selectTimeout);
 		if(ret < 0) {
 			perror("select: ");
@@ -178,12 +183,14 @@ void *ListeningThread(void *arg) {
 											"Unknown",
 											TYPE_MIDDLEWARE,
 											0);
-									ConnectionHandler(
+									if(ConnectionHandler(
 											ADD_TO_LIST,
 											&conn,
 											NULL,
 											NULL,
-											0);
+											0) != 0) {
+										debug_out(3, "Could not add connection to list\n");
+									}
 									// Middleware connection here
 								}
 							}
@@ -200,11 +207,10 @@ void *ListeningThread(void *arg) {
 						debug_out(3, "Reading from another middleware\n");
 						nBytes = force_read(i, recvBuf, sizeof(message_t));
 						if(nBytes > 0) {
-							HandleMessage((message_t *)recvBuf, i, &readFdSet);
+							HandleMessage((message_t *)recvBuf, i);
 						}
 						else if (nBytes == -1) {
 							perror("force_read");
-							FD_CLR(i, &readFdSet);
 							if(ConnectionHandler(REMOVE_BY_SOCKET, NULL, NULL, 0, i) == 0)
 								debug_out(5, "Removed socket %d from connection list\n", i);
 							else
@@ -213,7 +219,6 @@ void *ListeningThread(void *arg) {
 						}
 						else {
 							debug_out(5, "Listen: force_read returned EOF, terminating connection\n");
-							FD_CLR(i, &readFdSet);
 							if(ConnectionHandler(REMOVE_BY_SOCKET, NULL, NULL, 0, i) == 0) {
 								debug_out(5, "Removed socket %d from connection list\n", i);
 							}

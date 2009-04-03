@@ -23,7 +23,7 @@
 #define PORT			(12345)
 
 ssize_t force_read(int fd, void *buf, size_t count);
-int HandleMessage(message_t *msg, int from, fd_set *fdSet);
+int HandleMessage(message_t *msg, int from);
 void *ListeningThread(void *arg);
 
 #endif /* _LISTEN_THREAD_H_ */
