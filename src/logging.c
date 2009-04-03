@@ -35,21 +35,21 @@ log_type LogEntryType(char *type) {
 	else if(strncmp(type, LOG_TRANS_END, strlen(LOG_TRANS_END)) == 0)
 		op = TRANS_END;
 	else if(strncmp(type, LOG_ASSIGN, strlen(LOG_ASSIGN)) == 0)
-		op = ASSIGN;
+		op = L_ASSIGN;
 	else if(strncmp(type, LOG_ADD, strlen(LOG_ADD)) == 0)
-		op = ADD;
+		op = L_ADD;
 	else if(strncmp(type, LOG_PRINT, strlen(LOG_PRINT)) == 0)
-		op = PRINT;
+		op = L_PRINT;
 	else if(strncmp(type, LOG_DELETE, strlen(LOG_DELETE)) == 0)
-		op = DELETE;
+		op = L_DELETE;
 	else if(strncmp(type, LOG_SLEEP, strlen(LOG_SLEEP)) == 0)
-		op = SLEEP;
+		op = L_SLEEP;
 	else if(strncmp(type, LOG_IGNORE, strlen(LOG_IGNORE)) == 0)
-		op = IGNORE;
+		op = L_IGNORE;
 	else if(strncmp(type, LOG_MAGIC, strlen(LOG_MAGIC)) == 0)
-		op = MAGIC;
+		op = L_MAGIC;
 	else if(strncmp(type, LOG_QUIT, strlen(LOG_QUIT)) == 0)
-		op = QUIT;
+		op = L_QUIT;
 
 	return op;
 }
@@ -62,28 +62,28 @@ int WriteLogEntry(FILE *logfile, int id, const varList *cmd) {
 
 	for(it = cmd, ret = 0; it != NULL; it = it->next, ret++) {
 		switch(it->data.op) {
-			case  ASSIGN:
+			case  L_ASSIGN:
 				fprintf(logfile, "%s %s %s\n", LOG_ASSIGN, it->data.arg1, it->data.arg2);
 				break;
-			case ADD:
+			case L_ADD:
 				fprintf(logfile, "%s %s %s %s\n", LOG_ADD, it->data.arg1, it->data.arg2, it->data.arg3);
 				break;
-			case PRINT:
+			case L_PRINT:
 				fprintf(logfile, "%s %s\n", LOG_PRINT, it->data.arg1);
 				break;
-			case DELETE:
+			case L_DELETE:
 				fprintf(logfile, "%s %s\n", LOG_DELETE, it->data.arg1);
 				break;
-			case SLEEP:
+			case L_SLEEP:
 				fprint(logfile, "%s %s\n", LOG_SLEEP, it->data.arg1);
 				break;
-			case IGNORE:
+			case L_IGNORE:
 				fprintf(logfile, "%s\n", LOG_IGNORE);
 				break;
-			case MAGIC:
+			case L_MAGIC:
 				fprintf(logfile, "%s %s %s %s\n", LOG_MAGIC, it->data.arg1, it->data.arg2, it->data.arg3);
 				break;
-			case QUIT:
+			case L_QUIT:
 				fprintf(logfile, "%s\n", LOG_QUIT);
 				break;
 		}
@@ -108,34 +108,34 @@ int ReadLogEntry(FILE *logfile, int *id, varList **cmd) {
 		data.op = NOCMD;
 		while(fscanf(logfile, "%s", tmp) != -1 && transaction) {
 			switch(LogEntryType(tmp)) {
-				case ASSIGN:
-					data.op = ASSIGN;
+				case L_ASSIGN:
+					data.op = L_ASSIGN;
 					fscanf(logfile, "%s %s", data.arg1, data.arg2);
 					break;
-				case ADD:
-					data.op = ADD;
+				case L_ADD:
+					data.op = L_ADD;
 					fscanf(logfile, "%s %s %s", data.arg1, data.arg2, data.arg3);
 					break;
-				case PRINT:
-					data.op = PRINT;
+				case L_PRINT:
+					data.op = L_PRINT;
 					fscanf(logfile, "%s", data.arg1);
 					break;
-				case DELETE:
-					data.op = DELETE;
+				case L_DELETE:
+					data.op = L_DELETE;
 					fscanf(logfile, "%s", data.arg1);
 					break;
-				case SLEEP:
-					data.op = SLEEP;
+				case L_SLEEP:
+					data.op = L_SLEEP;
 					fscanf(logfile, "%s", data.arg1);
 					break;
-				case QUIT:
-					data.op = QUIT;
+				case L_QUIT:
+					data.op = L_QUIT;
 					break;
-				case IGNORE:
-					data.op = IGNORE;
+				case L_IGNORE:
+					data.op = L_IGNORE;
 					break;
-				case MAGIC:
-					data.op = MAGIC;
+				case L_MAGIC:
+					data.op = L_MAGIC;
 					fscanf(logfile, "%s %s %s", data.arg1, data.arg2, data.arg3);
 					break;
 				case TRANS_END:
