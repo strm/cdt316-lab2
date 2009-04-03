@@ -20,10 +20,7 @@ uint64_t globalId ( int cmd, int arg ) {
 			ret = (_id++);
 			break;
 		case ID_CHECK:
-			if ( arg > _id )
-				ret = 1;
-			else
-				ret = 0;
+				ret = arg - _id;
 			break;
 		//changes id and returns old value
 		case ID_CHANGE:
