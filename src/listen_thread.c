@@ -39,6 +39,7 @@ int HandleMessage(message_t *msg, int from) {
 								msg->data[i].arg2,
 								msg->data[i].arg3);
 					}
+					debug_out(4, "---\n");
 					msg->socket = from;
 						//globalId(ID_CHANGE, msg->owner);
 						newNode = createNode(msg);
