@@ -59,23 +59,28 @@ int getUsedVariables(varList ** var, varList * trans){
  */
 int getFromDB(varList ** var){
 	varList * iter = (*var);
-	char * ret;
 	int nRet = 1;
+	char ret[ARG_SIZE];
 
 	while( iter != NULL ){
+	//ret = (char *) malloc(sizeof(char)*ARG_SIZE);
 		if(is_entry(iter->data.arg1)){
+			debug_out(3, "%s %s\n", iter->data.arg1, ret);
 			if(get_entry(ret, DB_GLOBAL, iter->data.arg1) == FALSE){
-				printf("No value retrived for %s\n", iter->data.arg1);
-				strcpy(iter->data.arg2, "\0");
+				debug_out(4, "No value retrived for %s\n", iter->data.arg1);
+				strncpy(ret, "", ARG_SIZE);
+				strncpy(iter->data.arg2, ret, ARG_SIZE);
+				debug_out(3,"\n\n%s\n",iter->data.arg2);
 				nRet--;
 			}
 			else{
 				//sucess
-				printf("Retrived { %s } for %s", ret, iter->data.arg1);
-				strcpy(iter->data.arg2, ret);
-				ret = "\0";
+				debug_out(4, "Retrived { %s } for %s", ret, iter->data.arg1);
+				strcpy(iter->data.arg2, "");
+				strncpy(ret, "", ARG_SIZE);
 			}
 		}
+		//free(ret);
 		iter = iter->next;
 	}
 	return nRet;
@@ -269,6 +274,7 @@ int sendResponse(transNode * trans){
 	varList * iter = trans->unparsed;
 	response rsp;
 	int nRsp = 0;
+	int kPn = 0;
 	if(trans->owner == MSG_ME && iter != NULL){
 		//get number of responses needed
 		debug_out(5, "Sending all prints to client %d \n", trans->owner);
@@ -277,28 +283,29 @@ int sendResponse(transNode * trans){
 				nRsp++;
 			iter = iter->next; 
 		}
-		iter = trans->unparsed;
 		if(nRsp > 0){
 			/**
 			 * Send amount of responses to client
 			 */
-			nRsp = ntohl(nRsp);
+			nRsp = htonl(nRsp);
 			if(send(trans->socket, &nRsp, sizeof(int), 0) == -1){
 				debug_out(5, "send to client (failed)\n");
 				return 0;
 			}
-
 			else{
-				while(iter != NULL){
+				for(iter = trans->unparsed; iter != NULL; iter = iter->next){
+				debug_out(5, "Trying to send response %s\n", iter->data.arg1);
 					if(iter->data.op == PRINT){
-						rsp.seq = 0;
+						debug_out(3, "Sending response %d", kPn);
+						rsp.seq = htonl(kPn);
+						kPn++;
 						rsp.is_message = 0;
 						rsp.is_error = 0;
 						//check what type of print
-						if(is_entry(iter->data.arg2))
-							strcpy(rsp.result, varListGetValue(trans->parsed, iter->data.arg2));
-						else if(is_literal(iter->data.arg2))
-							strcpy(rsp.result, iter->data.arg2);
+						if(is_entry(iter->data.arg1))
+							strcpy(rsp.result, varListGetValue(trans->parsed, iter->data.arg1));
+						else if(is_literal(iter->data.arg1))
+							strcpy(rsp.result, iter->data.arg1);
 						else{
 							debug_out(5, "response (faileD) not a value or an entry\n");
 							return 0;

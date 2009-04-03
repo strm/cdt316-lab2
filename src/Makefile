@@ -10,10 +10,12 @@ CFLAGS 	= -c -Wall -I. -I../framework -I../framework/hidden
 
 OBJMIDDLE = ../framework/middle.o ../framework/hidden/middle-support.o ../framework/hidden/io.o ../framework/hidden/msg.o parser.o global.o lock.o trans.o msg_queue.o
 #OBJMIDDLEWARE = middleware.o ../framework/hidden/middle-support.o ../framework/hidden/io.o ../framework/hidden/msg.o middle_com.o listen_thread.o connection_list.o global.o lock.o trans.o msg_queue.o parser.o work_thread.o alive.o communication.o
-OBJMIDDLEWARE = middleware.o ../framework/hidden/middle-support.o ../framework/hidden/io.o ../framework/hidden/msg.o middle_com.o listen_thread.o global.o lock.o trans.o msg_queue.o parser.o work_thread.o alive.o connections.o
+OBJMIDDLEWARE = middleware.o ../framework/hidden/middle-support.o ../framework/hidden/io.o ../framework/hidden/msg.o middle_com.o listen_thread.o global.o lock.o trans.o msg_queue.o parser.o work_thread.o alive.o connections.o logging.o
 
 all: $(PROG)
 
+logging.o: logging.c
+	$(CC) $(CFLAGS) -o logging.o logging.c
 global.o: global.c
 	$(CC) $(CFLAGS) -o global.o global.c
 work_thread.o: work_thread.c

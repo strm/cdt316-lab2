@@ -6,14 +6,12 @@ int LogHandler(char cmd, int id, varList **commands) {
 	char *filename = NULL;
 	int filename_len;
 
-	switch cmd {
+	switch (cmd){
 		case LOG_WRITE_PRE:
 			break;
 		case LOG_WRITE_POST:
 			break;
 		case LOG_READ:
-			break;
-		case LOG_READ_NEXT:
 			break;
 		case LOG_LAST_ID:
 			break;
@@ -28,7 +26,7 @@ int LogHandler(char cmd, int id, varList **commands) {
 }
 
 log_type LogEntryType(char *type) {
-	log_type op = NOCMD;
+	log_type op = L_NOCMD;
 
 	if(strncmp(type, LOG_TRANS_START, strlen(LOG_TRANS_START)) == 0)
 		op = TRANS_START;
@@ -75,7 +73,7 @@ int WriteLogEntry(FILE *logfile, int id, const varList *cmd) {
 				fprintf(logfile, "%s %s\n", LOG_DELETE, it->data.arg1);
 				break;
 			case L_SLEEP:
-				fprint(logfile, "%s %s\n", LOG_SLEEP, it->data.arg1);
+				fprintf(logfile, "%s %s\n", LOG_SLEEP, it->data.arg1);
 				break;
 			case L_IGNORE:
 				fprintf(logfile, "%s\n", LOG_IGNORE);
@@ -105,7 +103,7 @@ int ReadLogEntry(FILE *logfile, int *id, varList **cmd) {
 	}
 
 	if(transaction) {
-		data.op = NOCMD;
+		data.op = L_NOCMD;
 		while(fscanf(logfile, "%s", tmp) != -1 && transaction) {
 			switch(LogEntryType(tmp)) {
 				case L_ASSIGN:
@@ -139,13 +137,13 @@ int ReadLogEntry(FILE *logfile, int *id, varList **cmd) {
 					fscanf(logfile, "%s %s %s", data.arg1, data.arg2, data.arg3);
 					break;
 				case TRANS_END:
-					data.op = NOCMD;
+					data.op = L_NOCMD;
 					transaction = 0;
 					break;
 				default:
 					break;
 			}
-			if(transaction && data.op != NOCMD)
+			if(transaction && data.op != L_NOCMD)
 				ret++;
 				varListPush(data, cmd);
 		}

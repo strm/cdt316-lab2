@@ -5,7 +5,7 @@
  */
 
 #include "work_thread.h"
-
+#include "logging.h"
 
 /**
  * Parse a transaction locally
@@ -102,6 +102,7 @@ void * worker_thread ( void * arg ){
 							else{
 								cmd.op = ntohl(cmd.op);
 								varListPush(cmd,(&trans->unparsed));
+								debug_out(4, "cmd.seq = %d\n", ntohl(cmd.seq));
 								counter++;
 							}
 						}
@@ -318,13 +319,25 @@ void * worker_thread ( void * arg ){
 							 */
 							debug_out(5, "We are commiting trans %d\n", trans->id);
 							if(commitParse(trans)){
-
-								if(sendResponse(trans))
-									debug_out(4, "Response sent to client\n");
+								if(sendResponse(trans) != 0){
+									if(trans->owner == MSG_ME)
+										debug_out(4, "Response sent to client\n");
+									else
+										debug_out(4, "Done with remote transaction\n");
+									//log
+									LogHandler(LOG_WRITE_POST, trans->id, &(trans->parsed));
+									//remove transaction since its done
+									if(removeAll(tmp->msg.msgId));
+									else
+										debug_out(5, "removeAll (failed)\n");
+									if(removeTransaction(&transList, tmp->msg.msgId));
+									else
+										debug_out(5, "removeTransaction (failed)\n");
+								}
 								else
 									debug_out(4, "Failed to send response to client\n");
 							}
-							else;
+							else
 								debug_out(5, "commitParse(failed)\n");
 							//we are not the owner
 							break;

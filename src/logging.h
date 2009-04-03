@@ -33,7 +33,7 @@
 #define LOG_PRE_NAME		("precommit.log")
 
 typedef enum {
-	TRANS_START, TRANS_END, NOCMD, L_ASSIGN, L_ADD, L_PRINT, L_DELETE, L_SLEEP, L_IGNORE, L_MAGIC, L_QUIT
+	TRANS_START, TRANS_END, L_NOCMD, L_ASSIGN, L_ADD, L_PRINT, L_DELETE, L_SLEEP, L_IGNORE, L_MAGIC, L_QUIT
 } log_type;
 
 int LogHandler(char cmd, int id, varList **cmds);
