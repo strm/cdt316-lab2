@@ -122,6 +122,7 @@ void *ListeningThread(void *arg) {
 	struct timeval selectTimeout;
 	node *tmp_msg = NULL;
 	message_t msg_data;
+	debug_out(5, "DB_GLOBAL: %s\n", DB_GLOBAL);
 
 	debug_out(5, "Listenthread has started\n");
 

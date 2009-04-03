@@ -30,6 +30,8 @@
 #define MW_EOF						(7)
 #define MW_ALIVE					(-888)
 
+extern char DB_GLOBAL[ARG_SIZE];
+
 typedef struct {
 	int msgType;
 	int endOfMsg;
