@@ -32,6 +32,7 @@ int HandleMessage(message_t *msg, int from) {
 					//debug_out(3, "msg->owner == msg->msgId - 1\n");
 					//if(globalId(ID_CHECK, ++msg->msgId)) {
 					for(i = 0; i < 8; i++) {
+						debug_out(4, "---\nmsgType: %d\n", msg->msgType);
 						debug_out(4, "Got %d %s %s %s\n",
 								msg->data[i].op,
 								msg->data[i].arg1,
