@@ -39,7 +39,7 @@ int HandleMessage(message_t *msg, int from) {
 								msg->data[i].arg3);
 					}
 					msg->socket = from;
-						globalId(ID_CHANGE, msg->owner);
+						//globalId(ID_CHANGE, msg->owner);
 						newNode = createNode(msg);
 						globalMsg(MSG_LOCK, MSG_NO_ARG);
 						globalMsg(MSG_PUSH, newNode);
