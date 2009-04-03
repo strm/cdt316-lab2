@@ -161,6 +161,14 @@ int CopyList(connection *src, connection **dest) {
 	connection *it;
 	int ret = -1;
 
+	if(src == NULL||dest == NULL) {
+		if(src == NULL)
+			printf("Bad source for list copy\n");
+		else
+			printf("Bad destination for list copy\n");
+		return ret;
+	}
+
 	for(it = src; it != NULL; it = it->next) {
 		ret = AddConnection(dest, it);
 		if(ret != 0) {
