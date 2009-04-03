@@ -14,6 +14,7 @@
 int HandleMessage(message_t *msg, int from) {
 	int ret = 0;
 	node *newNode;
+	int i;
 	//message_t tmp;
 
 	//if(globalId(ID_CHECK, msg->msgId)) {
@@ -30,11 +31,14 @@ int HandleMessage(message_t *msg, int from) {
 				//if(msg->owner == msg->msgId - 1) {
 					//debug_out(3, "msg->owner == msg->msgId - 1\n");
 					//if(globalId(ID_CHECK, ++msg->msgId)) {
+					for(i = 0; i < 8; i++) {
 						debug_out(4, "Got %d %s %s %s\n",
-								msg->data[0].op,
-								msg->data[0].arg1,
-								msg->data[0].arg2,
-								msg->data[0].arg3);
+								msg->data[i].op,
+								msg->data[i].arg1,
+								msg->data[i].arg2,
+								msg->data[i].arg3);
+					}
+					msg->socket = from;
 						globalId(ID_CHANGE, msg->owner);
 						newNode = createNode(msg);
 						globalMsg(MSG_LOCK, MSG_NO_ARG);
