@@ -131,7 +131,7 @@ int removeAll(int id){
 int lockTransaction(transNode * trans){
 	varList * tmp = trans->parsed;
 	if(tmp == NULL)
-		return FALSE;
+		return 2;
 	else{
 		//check all variables in parsed if they are locked.
 		while(tmp != NULL){

@@ -22,7 +22,7 @@ message_t newMsg(void){
 	message_t msg;
 	msg.msgType = -1;
 	msg.endOfMsg = 0;
-	msg.msgId = -1;
+	msg.msgId = -99;
 	msg.owner = -1;
 	msg.nMiddlewares = -1;
 	msg.sizeOfData = -1;

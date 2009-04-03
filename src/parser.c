@@ -9,8 +9,7 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-
-#define DB_GLOBAL "DATABASE1"
+#include "msg_queue.h"
 
 /*
  * Get a list of all used variables in transaction
@@ -21,6 +20,7 @@ int getUsedVariables(varList ** var, varList * trans){
 	printf("getUSedVariables started\n");
 	while ( trans != NULL ){
 		//check all args
+		printf("data.op = %d arg1 = %s\n", trans->data.op, trans->data.arg1);
 		if(trans->data.op <= 6){
 			if(is_entry(trans->data.arg1))
 				if(!varListFind(trans->data.arg1, (*var))){
@@ -51,7 +51,7 @@ int getUsedVariables(varList ** var, varList * trans){
 		printf("*");
 	}
 	
-	return ret;		
+	return ret;	
 }
 
 /*
@@ -64,8 +64,9 @@ int getFromDB(varList ** var){
 
 	while( iter != NULL ){
 		if(is_entry(iter->data.arg1)){
-			if(!get_entry(ret, DB_GLOBAL, iter->data.arg1)){
+			if(get_entry(ret, DB_GLOBAL, iter->data.arg1) == FALSE){
 				printf("No value retrived for %s\n", iter->data.arg1);
+				strcpy(iter->data.arg2, "\0");
 				nRet--;
 			}
 			else{
@@ -89,6 +90,7 @@ int localParse(varList ** var, varList * trans){
 	char * value;
 	int xValue, yValue, result;
 	printf("\nBegin local parse\n");
+	getFromDB(var);
 	while( iter != NULL ){
 		tmp = iter->data;
 		switch (tmp.op) {
@@ -225,10 +227,12 @@ int localParse(varList ** var, varList * trans){
  */
 int commitParse(transNode * trans){
 	varList *iter = (trans->parsed);
-	while(iter != NULL){
+	debug_out(5, "COMMIT TRANSACTION %d\n", trans->id);
+	for(;iter != NULL; iter = iter->next){
 		switch(iter->data.op){
 			case ASSIGN:
-				if(replace_entry(iter->data.arg2, DB_GLOBAL, iter->data.arg1));
+				if(replace_entry(iter->data.arg2, DB_GLOBAL, iter->data.arg1))
+					debug_out(4, "ASSIGN: %s to %s\n", iter->data.arg2, iter->data.arg1);
 				else
 					debug_out(5, "replace_entry (failed)\n");
 				break;
@@ -265,6 +269,7 @@ int sendResponse(transNode * trans){
 	varList * iter = trans->unparsed;
 	response rsp;
 	int nRsp = 0;
+		debug_out(5, "Sending all prints to client %d \n", trans->owner);
 	if(trans->owner == MSG_ME && iter != NULL){
 		//get number of responses needed
 		while(iter != NULL){

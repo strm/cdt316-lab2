@@ -92,7 +92,7 @@ transNode * createTransaction(int id){
 	tmp->next = NULL;
 	tmp->parsed = NULL;
 	tmp->unparsed = NULL;
-	tmp->conList = (connection *) malloc(sizeof(connection));
+	tmp->conList;
 	return tmp;
 }
 

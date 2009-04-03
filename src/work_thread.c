@@ -12,6 +12,11 @@
  */
 int ParseTransaction(transNode ** trans){
 	//get a list of all used variables
+	varList * test = (*trans)->parsed;
+	while(test != NULL){
+		debug_out(3, "test->data.arg1 = %s\n", test->data.arg1);
+		test = test->next;
+	}
 	if( getUsedVariables(&((*trans)->parsed), (*trans)->unparsed) == 0 ){
 		debug_out(5, "getUsedVariables (failed)\n");
 		return LOCALPARSE_FAILED;
@@ -74,10 +79,13 @@ void * worker_thread ( void * arg ){
 					else{
 						debug_out(3, "Setting up new transaction\n");
 						trans->owner = tmp->msg.owner;
-						if(ConnectionHandler(COPY_LIST, NULL, &(trans->conList), NULL, 0) != 0)
+						if(ConnectionHandler(COPY_LIST,NULL, &(trans->conList), NULL, 0) != 0)
 							debug_out(5, "Error %d\n", trans->conList);
-						else
+						else{
 							debug_out(3, "We have a list\n");
+							if(trans->conList == NULL)
+								debug_out(3, "List broken\n");
+						}
 						trans->socket = tmp->msg.socket;
 						if(trans->owner == MSG_ME){
 						/**
@@ -112,39 +120,38 @@ void * worker_thread ( void * arg ){
 								switch(ParseTransaction(&trans)){
 									case LOCALPARSE_SUCCESS:
 										//send to all clients!
-										counter = -1;
+										counter = 0;
 										newMsg.msgType = MW_TRANSACTION;
 										newMsg.endOfMsg = 0;
 										newMsg.msgId = tmp->id;
-										newMsg.sizeOfData = -1;
+										newMsg.sizeOfData = 0;
 										newMsg.owner = -1;
 
 										iter = trans->parsed;
 										if(iter != NULL){
 											for(;iter != NULL; iter = iter->next){
-												counter++;
-												newMsg.sizeOfData++;
+												debug_out(3, "newMsg = %s %s %s\n", iter->data.arg1 , iter->data.arg2, iter->data.arg3);
 												newMsg.data[newMsg.sizeOfData] = iter->data;
-												if(counter % 7){
+												if(counter == 7){
 													/*
 													 * Send Message here
 													 */
 													if(iter->next == NULL)
 														newMsg.endOfMsg = MW_EOF;
 													for(it = trans->conList; it != NULL; it = it->next) {
-													//for(n = 0; n < trans->conList.nConnections; n++){
-
-												debug_out(3, "Gonna send to socket %d\n", it->socket);
+														debug_out(3, "Gonna send to socket %d\n", it->socket);
 														mw_send(it->socket, &newMsg, sizeof(message_t));
 													}
 													//clean up
-													newMsg.sizeOfData = -1;
+													newMsg.sizeOfData = 0;
+													counter = 0;
 												}
+												counter++;
+												newMsg.sizeOfData++;
 											}
-											if(newMsg.endOfMsg != 1){
+											if(newMsg.endOfMsg != MW_EOF){
 												newMsg.endOfMsg = MW_EOF;
 												for(it = trans->conList; it != NULL; it = it->next) {
-												//for(n = 0; n < trans->conList.nConnections; n++){
 													mw_send(it->socket, &newMsg, sizeof(message_t));
 												}
 											}
@@ -166,7 +173,10 @@ void * worker_thread ( void * arg ){
 										break;
 									case LOCALPARSE_NO_LOCK:
 										//empty parsed list
-										for(cmd = varListPop(&(trans->parsed)); cmd.op != MAGIC; cmd = varListPop(&(trans->parsed)));
+										cmd.op = -1;
+										for(; cmd.op != MAGIC; cmd = varListPop(&(trans->parsed)));
+										printf("MESSAGE ID SWITHC = %d %d\n", tmp->msg.msgId, trans->id);
+										tmp->msg.msgId = trans->id;
 										//add message again to queue
 										if(globalMsg( MSG_PUSH, tmp ) == NULL)
 											debug_out(5, "globalMsg (failed)\n");
@@ -175,10 +185,12 @@ void * worker_thread ( void * arg ){
 							}
 							break;
 						default:
-							debug_out(4, "Transaction recived from mw\n");
+							debug_out(4, "Transaction recived from mw %d\n", tmp->msg.sizeOfData);
 							//from middleware;
-							for ( n = 0; n < tmp->msg.sizeOfData; n++ )
+							for ( n = 0; n < tmp->msg.sizeOfData; n++ ){
 								varListPush(tmp->msg.data[n], (&trans->parsed));
+								debug_out(2, "Added %s to list", tmp->msg.data[n]);
+							}
 							if(tmp->msg.endOfMsg == MW_EOF){
 								//Try to lockvariables
 								if(lockTransaction(trans) == 0){
@@ -186,11 +198,12 @@ void * worker_thread ( void * arg ){
 									/*
 									 * Create a nak frame
 									 */
+									debug_out(5, "NAK frame for %d", trans->id);
 									newMsg.msgType = MW_NAK;
 									newMsg.msgId = tmp->msg.msgId;
 									newMsg.endOfMsg = MW_EOF;
 									newMsg.sizeOfData = 0;
-									newMsg.owner = MSG_ME;
+									newMsg.owner = -1;
 									newMsg.nMiddlewares = 0;
 									//remove transaction
 									if(removeAll(tmp->msg.msgId));
@@ -205,11 +218,12 @@ void * worker_thread ( void * arg ){
 									/*
 									 * Create a ACK frame
 									 */
+									debug_out(5, "ACK frame for %d", trans->id);
 									newMsg.msgType = MW_ACK;
 									newMsg.msgId = tmp->msg.msgId;
 									newMsg.endOfMsg = MW_EOF;
 									newMsg.sizeOfData = 0;
-									newMsg.owner = MSG_ME;
+									newMsg.owner = -1;
 									newMsg.nMiddlewares = 0;
 								}
 								/*
@@ -220,6 +234,13 @@ void * worker_thread ( void * arg ){
 					}
 					break;
 				case MW_ACK:
+					debug_out(3, "Ack recived from %d\n", tmp->msg.socket);
+					it = trans->conList;
+					while(it != NULL){
+						debug_out(3, "list socket: %d", it->socket);
+						it = it->next;
+					}
+					it = (connection *)malloc(sizeof(connection));
 					if(GetConnectionBySocket(&(trans->conList), it, tmp->msg.socket) == 0){
 						it->ack = 1;
 						if(RemoveConnectionBySocket(&(trans->conList), tmp->msg.socket) == 0)
@@ -228,15 +249,28 @@ void * worker_thread ( void * arg ){
 								debug_out(5, "AddConnection != 0\n");
 						else
 							debug_out(5, "RemoveConnectionBySocketFailed\n");
+						counter = 1;
 						for(it = trans->conList; it != NULL; it = it->next){
 							if(it->ack == 0)
-								break;
-								
-								
+								counter--;
+						}
+						if(counter == 1){
+							newMsg.msgType = MW_COMMIT;
+							newMsg.msgId = trans->id;
+							//send commit to everyone
+							debug_out(5, "Sending commit\n");
+							globalMsg(MSG_PUSH, createNode(&newMsg));
+							for(it = trans->conList; it != NULL; it = it->next){
+								mw_send(it->socket, &newMsg, sizeof(newMsg));
+							}
 						}
 					}
-					else
-						debug_out(5, "GetConnectionBySocket != 0\n");
+					else {
+						if(it == NULL) {
+							debug_out(3, "'it' is NULL\n");
+						}
+						debug_out(5, "GetConnectionBySocket != 0 (%d)\n", tmp->msg.socket);
+					}
 					break;
 				case MW_NAK:
 					switch(trans->owner){
@@ -251,52 +285,56 @@ void * worker_thread ( void * arg ){
 								newMsg.owner = MSG_ME;
 
 								for(it = trans->conList; it != NULL; it = it->next) {
-								//for(n = 0; n < trans->conList.nConnections; n++){
+									//for(n = 0; n < trans->conList.nConnections; n++){
 									mw_send(it->socket, &newMsg, sizeof(newMsg));
 								}
 								//need to do this one again
+								cmd.op = -1;
 								for(cmd = varListPop(&(trans->parsed)); cmd.op != MAGIC; cmd = varListPop(&(trans->parsed)));
 								newMsg.msgType = MW_TRANSACTION;
 								newMsg.endOfMsg = MW_EOF;
 								newMsg.msgId = trans->id;
 
 								globalMsg(MSG_PUSH, createNode(&newMsg));
+								}
+								else
+									debug_out(5, "removeAll (failed)\n");
+								break;
+								default:
+								//throw out transaction
+								if(removeAll(tmp->msg.msgId));
+								else
+									debug_out(5, "removeAll (failed)\n");
+								if(removeTransaction(&transList, tmp->msg.msgId));
+								else
+									debug_out(5, "removeTransaction (failed)\n");
+								break;
 							}
-							else
-								debug_out(5, "removeAll (failed)\n");
 							break;
-						default:
-							//throw out transaction
-							if(removeAll(tmp->msg.msgId));
-							else
-								debug_out(5, "removeAll (failed)\n");
-							if(removeTransaction(&transList, tmp->msg.msgId));
-							else
-								debug_out(5, "removeTransaction (failed)\n");
-							break;
-					}
-					break;
-				case MW_COMMIT:
-					/*
-					 * Update transaction to db
-					 */
-					if(commitParse(trans))
-						n = sendResponse(trans);
-							if(n)
-								debug_out(4, "Response sent to client\n");
-							else if(!n)
-								debug_out(4, "Failed to send response to client\n");
+						case MW_COMMIT:
+							/*
+							 * Update transaction to db
+							 */
+							debug_out(5, "We are commiting trans %d\n", trans->id);
+							if(commitParse(trans)){
+
+								if(sendResponse(trans))
+									debug_out(4, "Response sent to client\n");
+								else
+									debug_out(4, "Failed to send response to client\n");
+							}
 							else;
-								//we are not the owner
-					break;
-				case MW_ALIVE:
-					/**
-					 * Update connection list here
-					 */
-					break;
-			} //msgtype switch
-		} //unlock after here
-		globalMsg( MSG_UNLOCK, MSG_NO_ARG );
-	} /* end of while(1) */
-	return (void *) 0;
-}
+								debug_out(5, "commitParse(failed)\n");
+							//we are not the owner
+							break;
+						case MW_ALIVE:
+							/**
+							 * Update connection list here
+							 */
+							break;
+					} //msgtype switch
+			} //unlock after here
+							globalMsg( MSG_UNLOCK, MSG_NO_ARG );
+					} /* end of while(1) */
+					return (void *) 0;
+			}
