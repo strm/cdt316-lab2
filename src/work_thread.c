@@ -319,6 +319,7 @@ void * worker_thread ( void * arg ){
 							/*
 							 * Update transaction to db
 							 */
+							LogHandler(LOG_WRITE_PRE, trans->id, &(trans->parsed));
 							debug_out(5, "We are commiting trans %d\n", trans->id);
 							if(commitParse(trans)){
 								if(sendResponse(trans) != 0){

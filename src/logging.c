@@ -8,6 +8,20 @@ int LogHandler(char cmd, int id, varList **commands) {
 
 	switch (cmd){
 		case LOG_WRITE_PRE:
+			debug_out(4, "log: In LOG_PRE_WRITE\n");
+			filename_len = strlen(LOG_PATH) + strlen(LOG_PRE_NAME) + 1;
+			filename = (char *)malloc(sizeof(char) * filename_len);
+			debug_out(4, "log: Memory for filename allocated\n");
+			strncpy(filename, LOG_PATH, filename_len);
+			strncat(filename, LOG_PRE_NAME, filename_len);
+			debug_out(4, "log: Built filename\n");
+			logfile = fopen(filename, "a");
+			if(logfile != NULL)
+				debug_out(4, "log: Opened file '%s'\n", filename);
+			else
+				debug_out(4, "log: Could not open file '%s'\n", filename);
+			WriteLogEntry(&logfile, id, *commands);
+			debug_out(4, "log: logentry written to file\n");
 			break;
 		case LOG_WRITE_POST:
 			break;
@@ -20,6 +34,9 @@ int LogHandler(char cmd, int id, varList **commands) {
 		default:
 			ret = -1;
 			break;
+	}
+	if(logfile) {
+		fclose(logfile);
 	}
 
 	return ret;
@@ -52,42 +69,46 @@ log_type LogEntryType(char *type) {
 	return op;
 }
 
-int WriteLogEntry(FILE *logfile, int id, const varList *cmd) {
+int WriteLogEntry(FILE **log, int id, varList *cmd) {
 	int ret;
 	varList *it;
+	FILE *logfile = *log;
 
 	fprintf(logfile, "%s\n%d\n", LOG_TRANS_START, id);
 
 	for(it = cmd, ret = 0; it != NULL; it = it->next, ret++) {
 		switch(it->data.op) {
-			case  L_ASSIGN:
+			case  ASSIGN:
 				fprintf(logfile, "%s %s %s\n", LOG_ASSIGN, it->data.arg1, it->data.arg2);
 				break;
-			case L_ADD:
+			case ADD:
 				fprintf(logfile, "%s %s %s %s\n", LOG_ADD, it->data.arg1, it->data.arg2, it->data.arg3);
 				break;
-			case L_PRINT:
+			case PRINT:
 				fprintf(logfile, "%s %s\n", LOG_PRINT, it->data.arg1);
 				break;
-			case L_DELETE:
+			case DELETE:
 				fprintf(logfile, "%s %s\n", LOG_DELETE, it->data.arg1);
 				break;
-			case L_SLEEP:
+			case SLEEP:
 				fprintf(logfile, "%s %s\n", LOG_SLEEP, it->data.arg1);
 				break;
-			case L_IGNORE:
+			case IGNORE:
 				fprintf(logfile, "%s\n", LOG_IGNORE);
 				break;
-			case L_MAGIC:
+			case MAGIC:
 				fprintf(logfile, "%s %s %s %s\n", LOG_MAGIC, it->data.arg1, it->data.arg2, it->data.arg3);
 				break;
-			case L_QUIT:
+			case QUIT:
 				fprintf(logfile, "%s\n", LOG_QUIT);
+				break;
+			default:
 				break;
 		}
 	}
 
 	fprintf(logfile, "%s\n", LOG_TRANS_END);
+	return 0;
 }
 
 int ReadLogEntry(FILE *logfile, int *id, varList **cmd) {
