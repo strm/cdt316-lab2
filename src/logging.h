@@ -37,7 +37,7 @@ typedef enum {
 } log_type;
 
 int LogHandler(char cmd, int id, varList **cmds);
-int WriteLogEntry(FILE *logfile, int id, const varList *cmd);
+int WriteLogEntry(FILE **log, int id, varList *cmd);
 int ReadLogEntry(FILE *logfile, int *id, varList **cmd);
 
 #endif
