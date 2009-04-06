@@ -6,5 +6,3 @@ add bar bar -10
 ADD foo foo 10
 PRINT foo
 print bar
-ASSIGN fish 0
-QUIT

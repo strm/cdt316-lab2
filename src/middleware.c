@@ -262,6 +262,7 @@ int main(int argc, char *argv[]) {
 	//connection c;
 	pthread_t listenThread;
 	pthread_t work;
+	pthread_t alive;
 
 	if(argc < 2) {
 		fprintf(stderr, "Insufficient parameters for %s\n", argv[0]);

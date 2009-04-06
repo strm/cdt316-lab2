@@ -1,5 +1,5 @@
 /*
- * Text: Worker thread (parses and commits transactions)
+ * Text: Worker thread (parses and commits transaction6)
  * Authors: Niklas Pettersson, Lars Cederholm
  * Date: 19 March 2009
  */
@@ -143,7 +143,8 @@ void * worker_thread ( void * arg ){
 														newMsg.endOfMsg = MW_EOF;
 													for(it = trans->conList; it != NULL; it = it->next) {
 														debug_out(3, "Gonna send to socket %d\n", it->socket);
-														mw_send(it->socket, &newMsg, sizeof(message_t));
+														if(it->socket != -1)
+															mw_send(it->socket, &newMsg, sizeof(message_t));
 													}
 													//clean up
 													newMsg.sizeOfData = 0;
@@ -155,11 +156,13 @@ void * worker_thread ( void * arg ){
 											if(newMsg.endOfMsg != MW_EOF){
 												newMsg.endOfMsg = MW_EOF;
 												for(it = trans->conList; it != NULL; it = it->next) {
-													mw_send(it->socket, &newMsg, sizeof(message_t));
+													if(it->socket != -1)
+														mw_send(it->socket, &newMsg, sizeof(message_t));
 												}
 											}
 										}
-										debug_out(5, "Local Parse(DONE) send to client(DONE)\n");
+										debug_out(5, "Local Parse(DONE) sleeping for 5sec\n");
+										sleep(5);
 										break;
 									case LOCALPARSE_FAILED:
 										//unrecoverable error
@@ -222,7 +225,7 @@ void * worker_thread ( void * arg ){
 									/*
 									 * Create a ACK frame
 									 */
-									debug_out(5, "ACK frame for %d", trans->id);
+									debug_out(5, "ACK frame for %d\n", trans->id);
 									newMsg.msgType = MW_ACK;
 									newMsg.msgId = tmp->msg.msgId;
 									newMsg.endOfMsg = MW_EOF;
@@ -233,7 +236,11 @@ void * worker_thread ( void * arg ){
 								/*
 								 * Send Frame
 								 */
+								debug_out(6, "Sending ACK KILL ME NOW\n");
+								sleep(6);
 								mw_send(tmp->msg.socket, &newMsg, sizeof(message_t));
+								debug_out(6, "ACK SENT KILL ME NOW\n");
+								sleep(6);
 							}
 					}
 					break;
@@ -265,7 +272,8 @@ void * worker_thread ( void * arg ){
 							debug_out(5, "Sending commit\n");
 							globalMsg(MSG_PUSH, createNode(&newMsg));
 							for(it = trans->conList; it != NULL; it = it->next){
-								mw_send(it->socket, &newMsg, sizeof(newMsg));
+								if(it->socket != -1)
+									mw_send(it->socket, &newMsg, sizeof(newMsg));
 							}
 						}
 					}
@@ -289,8 +297,8 @@ void * worker_thread ( void * arg ){
 								newMsg.owner = MSG_ME;
 
 								for(it = trans->conList; it != NULL; it = it->next) {
-									//for(n = 0; n < trans->conList.nConnections; n++){
-									mw_send(it->socket, &newMsg, sizeof(newMsg));
+									if(it->socket != -1)
+										mw_send(it->socket, &newMsg, sizeof(newMsg));
 								}
 								//need to do this one again
 								cmd.op = -1;
@@ -348,6 +356,7 @@ void * worker_thread ( void * arg ){
 							/**
 							 * Update connection list here
 							 */
+							debug_out(5, "Starting to remove a middleware that is down\n");
 							for(trans = transList; trans != NULL; trans = trans->next){
 								if(trans->socket == tmp->msg.socket){
 									//send nak to everyone
@@ -360,6 +369,18 @@ void * worker_thread ( void * arg ){
 										mw_send(it->socket, &newMsg, sizeof(newMsg));
 									}
 									globalMsg(MSG_PUSH, createNode(&newMsg));
+								}
+								else{
+									for(it = trans->conList; it != NULL; it = it->next){
+										if(it->socket == tmp->msg.socket){
+											it->socket = -1;
+											newMsg.msgType = MW_ACK;
+											newMsg.msgId = trans->id;
+											newMsg.owner = trans->owner;
+											newMsg.socket = -1;
+											globalMsg(MSG_PUSH, createNode(&newMsg));
+										}
+									}
 								}
 							}
 							break;

@@ -302,6 +302,7 @@ int sendResponse(transNode * trans){
 						rsp.is_message = 0;
 						rsp.is_error = 0;
 						//check what type of print
+						debug_out(3, "Trying to check what type of data to be sent\n");
 						if(is_entry(iter->data.arg1))
 							strcpy(rsp.result, varListGetValue(trans->parsed, iter->data.arg1));
 						else if(is_literal(iter->data.arg1))
@@ -310,9 +311,11 @@ int sendResponse(transNode * trans){
 							debug_out(5, "response (faileD) not a value or an entry\n");
 							return 0;
 						}
+						sleep(5);
+						debug_out(5, "after sleep sendResponse\n");
 						if(send(trans->socket, &rsp, sizeof(response), 0) == -1)
 							debug_out(5, "Send to clint (failed)\n");
-
+						debug_out(5, "after send sendResponse\n");
 					}
 				}
 			}

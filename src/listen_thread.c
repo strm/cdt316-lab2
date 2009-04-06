@@ -218,21 +218,36 @@ void *ListeningThread(void *arg) {
 						}
 						else if (nBytes == -1) {
 							perror("force_read");
-							/*if(ConnectionHandler(REMOVE_BY_SOCKET, NULL, NULL, 0, i) == 0)
+							if(ConnectionHandler(REMOVE_BY_SOCKET, NULL, NULL, 0, i) == 0){
 								debug_out(5, "Removed socket %d from connection list\n", i);
+								msg_data.msgType = MW_ALIVE;
+								msg_data.socket = i;
+								msg_data.endOfMsg = 1;
+								msg_data.msgId = -75;
+								globalMsg(MSG_LOCK, MSG_NO_ARG);
+								globalMsg(MSG_PUSH, createNode(&msg_data));
+								globalMsg(MSG_UNLOCK, MSG_NO_ARG);
+							}
 							else
-								debug_out(5, "Failed to remove interrupted connection\n");*/
+								debug_out(5, "Failed to remove interrupted connection\n");
 							/* TODO: Add error handling */
 							FD_CLR(i, &readFdSet);
 						}
 						else {
 							debug_out(5, "Listen: force_read returned EOF, terminating connection\n");
-							/*if(ConnectionHandler(REMOVE_BY_SOCKET, NULL, NULL, 0, i) == 0) {
+							if(ConnectionHandler(REMOVE_BY_SOCKET, NULL, NULL, 0, i) == 0) {
 								debug_out(5, "Removed socket %d from connection list\n", i);
+								msg_data.msgType = MW_ALIVE;
+								msg_data.socket = i;
+								msg_data.endOfMsg = 1;
+								msg_data.msgId = -75;
+								globalMsg(MSG_LOCK, MSG_NO_ARG);
+								globalMsg(MSG_PUSH, createNode(&msg_data));
+								globalMsg(MSG_UNLOCK, MSG_NO_ARG);
 							}
 							else {
 								debug_out(5, "Failed to remove interrupted connection\n");
-							}*/
+							}
 							FD_CLR(i, &readFdSet);
 						}
 					}
