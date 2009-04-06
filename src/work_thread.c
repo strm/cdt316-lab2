@@ -162,7 +162,7 @@ void * worker_thread ( void * arg ){
 											}
 										}
 										debug_out(5, "Local Parse(DONE) sleeping for 5sec\n");
-										sleep(5);
+										sleep(MW_SLEEP);
 										break;
 									case LOCALPARSE_FAILED:
 										//unrecoverable error
@@ -170,7 +170,7 @@ void * worker_thread ( void * arg ){
 										if(removeAll(tmp->msg.msgId));
 										else
 											debug_out(5, "removeAll (failed %d)\n", tmp->msg.msgId);
-										if(removeTransaction(&transList, tmp->msg.msgId));
+										if(removeTransaction(&transList, trans->id));
 										else
 											debug_out(5, "removeTransaction (failed) %d tmp->msg.msgId\n");
 										/* TODO
@@ -215,8 +215,8 @@ void * worker_thread ( void * arg ){
 									//remove transaction
 									if(removeAll(tmp->msg.msgId));
 									else
-										debug_out(5, "removeAll (failed %d)\n", tmp->msg.msgId);
-									if(removeTransaction(&transList, tmp->msg.msgId));
+										debug_out(5, "removeAll (failed %d)\n", trans->id);
+									if(removeTransaction(&transList, trans->id));
 									else
 										debug_out(5, "removeTransaction (failed %d)\n", tmp->msg.msgId);
 								}
@@ -237,10 +237,10 @@ void * worker_thread ( void * arg ){
 								 * Send Frame
 								 */
 								debug_out(6, "Sending ACK KILL ME NOW\n");
-								sleep(6);
+								sleep(MW_SLEEP);
 								mw_send(tmp->msg.socket, &newMsg, sizeof(message_t));
 								debug_out(6, "ACK SENT KILL ME NOW\n");
-								sleep(6);
+								sleep(MW_SLEEP);
 							}
 					}
 					break;
@@ -314,12 +314,12 @@ void * worker_thread ( void * arg ){
 								break;
 								default:
 								//throw out transaction
-								if(removeAll(tmp->msg.msgId));
+								if(removeAll(trans->id));
 								else
 									debug_out(5, "removeAll (failed %d)\n", tmp->msg.msgId);
-								if(removeTransaction(&transList, tmp->msg.msgId));
+								if(removeTransaction(&transList, trans->id));
 								else
-									debug_out(5, "removeTransaction (failed %d)\n", tmp->msg.msgId);
+									debug_out(5, "removeTransaction (failed %d)\n", trans->id);
 								break;
 							}
 							break;
@@ -338,10 +338,12 @@ void * worker_thread ( void * arg ){
 									//log
 									LogHandler(LOG_WRITE_POST, trans->id, &(trans->parsed));
 									//remove transaction since its done
-									if(removeAll(trans->id));
+									if(removeAll(trans->id))
+										debug_out(5, "Lock removed for %d\n", trans->id);
 									else
 										debug_out(5, "removeAll (failed) (commit %d)\n", tmp->msg.msgId);
-									if(removeTransaction(&trans, trans->id));
+									if(removeTransaction(&transList, trans->id))
+										debug_out(5, "Transaction removed %d\n", tmp->msg.msgId);
 									else
 										debug_out(5, "removeTransaction (failed) (commit)\n", tmp->msg.msgId);
 								}
@@ -350,6 +352,8 @@ void * worker_thread ( void * arg ){
 							}
 							else
 								debug_out(5, "commitParse(failed)\n");
+							if(transList == NULL)
+										debug_out(5, "list is empty\n");
 							//we are not the owner
 							break;
 						case MW_ALIVE:
