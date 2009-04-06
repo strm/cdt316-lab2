@@ -9,10 +9,11 @@ int LogHandler(char cmd, int id, varList **commands) {
 	switch (cmd){
 		case LOG_WRITE_PRE:
 			debug_out(4, "log: In LOG_PRE_WRITE\n");
-			filename_len = strlen(LOG_PATH) + strlen(LOG_PRE_NAME) + 1;
+			filename_len = strlen(LOG_PATH) + strlen(LOG_PRE_NAME) + strlen(DB_GLOBAL) + 1;
 			filename = (char *)malloc(sizeof(char) * filename_len);
 			debug_out(4, "log: Memory for filename allocated\n");
 			strncpy(filename, LOG_PATH, filename_len);
+			strncat(filename, DB_GLOBAL, filename_len);
 			strncat(filename, LOG_PRE_NAME, filename_len);
 			debug_out(4, "log: Built filename\n");
 			logfile = fopen(filename, "a");

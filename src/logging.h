@@ -29,8 +29,8 @@
 #define LOG_QUIT				("quit")
 
 #define LOG_PATH				("./logs/")
-#define LOG_POST_NAME		("commited.log")
-#define LOG_PRE_NAME		("precommit.log")
+#define LOG_POST_NAME		("-commit.log")
+#define LOG_PRE_NAME		("-precommit.log")
 
 typedef enum {
 	TRANS_START, TRANS_END, L_NOCMD, L_ASSIGN, L_ADD, L_PRINT, L_DELETE, L_SLEEP, L_IGNORE, L_MAGIC, L_QUIT
