@@ -288,7 +288,7 @@ int sendResponse(transNode * trans){
 			 * Send amount of responses to client
 			 */
 			nRsp = htonl(nRsp);
-			if(send(trans->socket, &nRsp, sizeof(int), 0) == -1){
+			if(send(trans->socket, &nRsp, sizeof(int), MSG_NOSIGNAL) == -1){
 				debug_out(5, "send to client (failed)\n");
 				return 0;
 			}
@@ -311,11 +311,8 @@ int sendResponse(transNode * trans){
 							debug_out(5, "response (faileD) not a value or an entry\n");
 							return 0;
 						}
-						sleep(5);
-						debug_out(5, "after sleep sendResponse\n");
-						if(send(trans->socket, &rsp, sizeof(response), 0) == -1)
+						if(send(trans->socket, &rsp, sizeof(response), MSG_NOSIGNAL) == -1)
 							debug_out(5, "Send to clint (failed)\n");
-						debug_out(5, "after send sendResponse\n");
 					}
 				}
 			}

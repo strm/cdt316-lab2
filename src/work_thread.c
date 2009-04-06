@@ -162,7 +162,7 @@ void * worker_thread ( void * arg ){
 											}
 										}
 										debug_out(5, "Local Parse(DONE) sleeping for 5sec\n");
-										sleep(5);
+										sleep(MW_SLEEP);
 										break;
 									case LOCALPARSE_FAILED:
 										//unrecoverable error
@@ -170,7 +170,7 @@ void * worker_thread ( void * arg ){
 										if(removeAll(tmp->msg.msgId));
 										else
 											debug_out(5, "removeAll (failed %d)\n", tmp->msg.msgId);
-										if(removeTransaction(&transList, tmp->msg.msgId));
+										if(removeTransaction(&transList, trans->id));
 										else
 											debug_out(5, "removeTransaction (failed) %d tmp->msg.msgId\n");
 										/* TODO
@@ -215,8 +215,8 @@ void * worker_thread ( void * arg ){
 									//remove transaction
 									if(removeAll(tmp->msg.msgId));
 									else
-										debug_out(5, "removeAll (failed %d)\n", tmp->msg.msgId);
-									if(removeTransaction(&transList, tmp->msg.msgId));
+										debug_out(5, "removeAll (failed %d)\n", trans->id);
+									if(removeTransaction(&transList, trans->id));
 									else
 										debug_out(5, "removeTransaction (failed %d)\n", tmp->msg.msgId);
 								}
@@ -237,10 +237,10 @@ void * worker_thread ( void * arg ){
 								 * Send Frame
 								 */
 								debug_out(6, "Sending ACK KILL ME NOW\n");
-								sleep(6);
+								sleep(MW_SLEEP);
 								mw_send(tmp->msg.socket, &newMsg, sizeof(message_t));
 								debug_out(6, "ACK SENT KILL ME NOW\n");
-								sleep(6);
+								sleep(MW_SLEEP);
 							}
 					}
 					break;
@@ -308,10 +308,27 @@ void * worker_thread ( void * arg ){
 								newMsg.msgId = trans->id;
 
 								globalMsg(MSG_PUSH, createNode(&newMsg));
+<<<<<<< HEAD:src/work_thread.c
+=======
+								}
+								else
+									debug_out(5, "removeAll (failed) (nak) %d\n", tmp->msg.msgId);
+								break;
+								default:
+								//throw out transaction
+								if(removeAll(trans->id));
+								else
+									debug_out(5, "removeAll (failed %d)\n", tmp->msg.msgId);
+								if(removeTransaction(&transList, trans->id));
+								else
+									debug_out(5, "removeTransaction (failed %d)\n", trans->id);
+								break;
+>>>>>>> f24370546b4c4ea24f3cf98bfc3299f0b505c581:src/work_thread.c
 							}
 							else
 								debug_out(5, "removeAll (failed) (nak) %d\n", tmp->msg.msgId);
 							break;
+<<<<<<< HEAD:src/work_thread.c
 						default:
 							//throw out transaction
 							if(removeAll(tmp->msg.msgId));
@@ -320,6 +337,40 @@ void * worker_thread ( void * arg ){
 							if(removeTransaction(&transList, tmp->msg.msgId));
 							else
 								debug_out(5, "removeTransaction (failed %d)\n", tmp->msg.msgId);
+=======
+						case MW_COMMIT:
+							/*
+							 * Update transaction to db
+							 */
+							LogHandler(LOG_WRITE_PRE, trans->id, &(trans->parsed));
+							debug_out(5, "We are commiting trans %d\n", trans->id);
+							if(commitParse(trans)){
+								if(sendResponse(trans) != 0){
+									if(trans->owner == MSG_ME)
+										debug_out(4, "Response sent to client\n");
+									else
+										debug_out(4, "Done with remote transaction\n");
+									//log
+									LogHandler(LOG_WRITE_POST, trans->id, &(trans->parsed));
+									//remove transaction since its done
+									if(removeAll(trans->id))
+										debug_out(5, "Lock removed for %d\n", trans->id);
+									else
+										debug_out(5, "removeAll (failed) (commit %d)\n", tmp->msg.msgId);
+									if(removeTransaction(&transList, trans->id))
+										debug_out(5, "Transaction removed %d\n", tmp->msg.msgId);
+									else
+										debug_out(5, "removeTransaction (failed) (commit)\n", tmp->msg.msgId);
+								}
+								else
+									debug_out(4, "Failed to send response to client\n");
+							}
+							else
+								debug_out(5, "commitParse(failed)\n");
+							if(transList == NULL)
+										debug_out(5, "list is empty\n");
+							//we are not the owner
+>>>>>>> f24370546b4c4ea24f3cf98bfc3299f0b505c581:src/work_thread.c
 							break;
 					}
 					break;

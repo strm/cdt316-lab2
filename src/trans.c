@@ -9,7 +9,11 @@
 #include <stdio.h>
 
 int isTransaction(transNode * list, int id){
+	if(id < 0 || list == NULL)
+		return FALSE;
+	debug_out(3, "trying to match transaction\n");
 	while( list != NULL ){
+		debug_out(3, "not null\n");
 		if(list->id == id){
 			debug_out(3, "isTransaction match found %d = %d", list->id, id );
 			return TRUE;
@@ -17,6 +21,7 @@ int isTransaction(transNode * list, int id){
 		else
 			list = list->next;
 	}
+	debug_out(5, "not a transaction %d\n", id);
 	return FALSE;
 }
 /*
@@ -35,35 +40,26 @@ transNode * getTransaction(transNode * list, int id){
 int removeTransaction(transNode ** list, int id){
 	transNode * current;
 	transNode * prev;
-	
-	if((*list) == NULL)
+
+	if((*list) == NULL){
+		debug_out(5, "list empty\n");
 		return FALSE;
+	}
 	else{
-		current = (*list);
-		prev = (*list);
-		if(current->id == id && current->next == NULL){
-			//free(current);
-			(*list) = NULL;
-			debug_out(5, "removing(special) %d\n", id);
-			return TRUE;
-		}
-		do{
-			printf("%d\n", current->id);
-			if( current->id == id){
-				if(prev == (*list))
+		for(current = (*list), prev = (*list); current != NULL; prev = current, current = current->next){
+			if(current->id == id){
+				//match
+			debug_out(5, "transList %d\n", current->id);
+				if(current == (*list))
 					(*list) = current->next;
 				else
 					prev->next = current->next;
 				free(current);
-				debug_out(5, "removing %d\n", id);
+				if((*list) == NULL)
+					debug_out(5, "list should be empty\n");
 				return TRUE;
 			}
-			else{
-				prev = current;
-				current = current->next;
-			}
-		
-		}while(current != NULL);
+		}
 	}
 	return FALSE;
 }
