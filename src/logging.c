@@ -1,34 +1,81 @@
 #include "logging.h"
 
-int LogHandler(char cmd, int id, varList **commands) {
+int LogHandler(char cmd, int id_in, varList **commands, int *id_out) {
 	int ret = 0;
-	FILE *logfile = NULL;
-	char *filename = NULL;
-	int filename_len;
+	FILE *post_file = NULL;
+	FILE *pre_file = NULL;
+	char *post_log = NULL;
+	char *pre_log = NULL;
+	int post_log_len = strlen(LOG_PATH) + strlen(LOG_POST_NAME) + strlen(DB_GLOBAL) + 1;
+	int pre_log_len = strlen(LOG_PATH) + strlen(LOG_PRE_NAME) + strlen(DB_GLOBAL) + 1;
+
+	post_log = (char *)malloc(sizeof(char *) * post_log_len);
+	pre_log = (char *)malloc(sizeof(char *) * pre_log_len);
+
+	strncpy(post_log, LOG_PATH, post_log_len);
+	strncat(post_log, DB_GLOBAL, post_log_len);
+	strncat(post_log, LOG_POST_NAME, post_log_len);
+
+	strncpy(pre_log, LOG_PATH, pre_log_len);
+	strncat(pre_log, DB_GLOBAL, pre_log_len);
+	strncat(pre_log, LOG_PRE_NAME, pre_log_len);
 
 	switch (cmd){
 		case LOG_WRITE_PRE:
-			debug_out(4, "log: In LOG_PRE_WRITE\n");
-			filename_len = strlen(LOG_PATH) + strlen(LOG_PRE_NAME) + strlen(DB_GLOBAL) + 1;
-			filename = (char *)malloc(sizeof(char) * filename_len);
-			debug_out(4, "log: Memory for filename allocated\n");
-			strncpy(filename, LOG_PATH, filename_len);
-			strncat(filename, DB_GLOBAL, filename_len);
-			strncat(filename, LOG_PRE_NAME, filename_len);
-			debug_out(4, "log: Built filename\n");
-			logfile = fopen(filename, "a");
-			if(logfile != NULL)
-				debug_out(4, "log: Opened file '%s'\n", filename);
+			debug_out(4, "log: In LOG_WRITE_PRE\n");
+			pre_file = fopen(pre_log, "a");
+			if(pre_file != NULL)
+				debug_out(4, "log: Opened file '%s'\n", pre_log);
 			else
-				debug_out(4, "log: Could not open file '%s'\n", filename);
-			WriteLogEntry(&logfile, id, *commands);
+			{
+				debug_out(4, "log: Could not open file '%s'\n", pre_log);
+				ret = -1;
+				break;
+			}
+			WriteLogEntry(pre_file, id_in, *commands);
 			debug_out(4, "log: logentry written to file\n");
 			break;
 		case LOG_WRITE_POST:
+			debug_out(4, "log: In LOG_WRITE_POST\n");
+			post_file = fopen(post_log, "a");
+			if(post_file != NULL)
+				debug_out(4, "log: Opened file '%s'\n", post_log);
+			else {
+				debug_out(4, "log: Could not open file '%s'\n", post_log);
+				ret = -1;
+				break;
+			}
+			WriteLogEntry(post_file, id_in, *commands);
+			debug_out(4, "log: logentry written to file\n");
 			break;
-		case LOG_READ:
+		case LOG_READ_POST:
+			post_file = fopen(post_log, "r");
+			if(post_file != NULL) {
+				for(*id_out = LOG_NO_ID; *id_out != id_in;) {
+					if(ReadLogEntry(post_file, id_out, commands) == -1) {
+						*id_out = LOG_NO_ID;
+						ret = LOG_NO_ID;
+					}
+				}
+			}
+			break;
+		case LOG_READ_PRE:
+			pre_file = fopen(pre_log, "r");
+			if(pre_file != NULL) {
+				for(*id_out = LOG_NO_ID; *id_out != id_in;) {
+					if(ReadLogEntry(pre_file, id_out, commands) == -1) {
+						*id_out = LOG_NO_ID;
+						ret = LOG_NO_ID;
+					}
+				}
+			}
 			break;
 		case LOG_LAST_ID:
+			if(id_out != NULL) {
+				ret = GetLastId(pre_log, post_log, id_out);
+			}
+			else
+				ret = -1;
 			break;
 		case LOG_CHECK_ID:
 			break;
@@ -36,11 +83,45 @@ int LogHandler(char cmd, int id, varList **commands) {
 			ret = -1;
 			break;
 	}
-	if(logfile) {
-		fclose(logfile);
+	if(pre_file) {
+		fclose(pre_file);
+	}
+	if(post_file) {
+		fclose(post_file);
 	}
 
 	return ret;
+}
+
+int GetLastId(char *pre_log, char *post_log, int *result) {
+	int post_id = -1, pre_id = -1;
+	FILE *pre_file = fopen(pre_log, "r");
+	FILE *post_file = fopen(post_log, "r");
+	char line[LINE_LEN];
+
+	if(pre_file != NULL) {
+		while(fscanf(pre_file, "%s", line) != EOF) {
+			if(strncmp(line, LOG_TRANS_START, strlen(LOG_TRANS_START) + 1) == 0) {
+				fscanf(pre_file, "%d", &pre_id);
+			}
+		}
+		fclose(pre_file);
+	}
+	if(post_file != NULL) {
+		while(fscanf(post_file, "%s", line) != EOF) {
+			if(strncmp(line, LOG_TRANS_START, strlen(LOG_TRANS_START) + 1) == 0) {
+				fscanf(post_file, "%d", &post_id);
+			}
+		}
+		fclose(post_file);
+	}
+
+	if(pre_id > post_id) {
+		*result = pre_id;
+		return pre_id - post_id;
+	}
+	*result = post_id;
+	return 0;
 }
 
 log_type LogEntryType(char *type) {
@@ -70,10 +151,10 @@ log_type LogEntryType(char *type) {
 	return op;
 }
 
-int WriteLogEntry(FILE **log, int id, varList *cmd) {
+int WriteLogEntry(FILE *logfile, int id, varList *cmd) {
 	int ret;
 	varList *it;
-	FILE *logfile = *log;
+	//FILE *logfile = *log;
 
 	fprintf(logfile, "%s\n%d\n", LOG_TRANS_START, id);
 
@@ -117,16 +198,20 @@ int ReadLogEntry(FILE *logfile, int *id, varList **cmd) {
 	char tmp[ARG_SIZE];
 	command data;
 
-	while(fscanf(logfile, "%s", tmp) != -1) {
-		if(LogEntryType(tmp) == TRANS_START) {
-			transaction = 1;
-			break;
+	while(1) {
+		if(fscanf(logfile, "%s", tmp) != EOF) {
+			if(LogEntryType(tmp) == TRANS_START) {
+				transaction = 1;
+				break;
+			}
 		}
+		else
+			return -1;
 	}
 
 	if(transaction) {
 		data.op = L_NOCMD;
-		while(fscanf(logfile, "%s", tmp) != -1 && transaction) {
+		while((fscanf(logfile, "%s", tmp) != -1) && transaction) {
 			switch(LogEntryType(tmp)) {
 				case L_ASSIGN:
 					data.op = L_ASSIGN;

@@ -7,6 +7,7 @@
 #include "listen_thread.h"
 #include "connections.h"
 #include "work_thread.h"
+#include "logging.h"
 
 #define NS_LOOKUP_ATTEMPTS	(10)
 #define NS_SLEEP_DELAY		(1)
@@ -41,6 +42,17 @@ int ConnectMiddleware(char *ns_entry_data, int csock, struct sockaddr_in *hostIn
 		send(csock, (void *)&REMOVETHIS, sizeof(long), 0);
 		return MW_CONNECT_SUCCESS;
 	}
+}
+
+int SyncLogs() {
+	int result, last_id;
+	result = LogHandler(LOG_LAST_ID, 0, NULL, &last_id);
+
+	if(result > 0) {
+		debug_out(5, "Sync: There are transactions that have not been commited\n");
+	/* TODO: Add synching here plix */	
+	}
+	return 0;
 }
 
 int start_middleware(char *database) {
@@ -262,7 +274,7 @@ int main(int argc, char *argv[]) {
 	//connection c;
 	pthread_t listenThread;
 	pthread_t work;
-	pthread_t alive;
+	//pthread_t alive;
 
 	if(argc < 2) {
 		fprintf(stderr, "Insufficient parameters for %s\n", argv[0]);
