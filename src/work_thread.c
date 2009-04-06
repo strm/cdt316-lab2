@@ -347,6 +347,20 @@ void * worker_thread ( void * arg ){
 							/**
 							 * Update connection list here
 							 */
+							for(trans = transList; trans != NULL; trans = trans->next){
+								if(trans->socket == tmp->msg.socket){
+									//send nak to everyone
+									newMsg.msgType = MW_NAK;
+									newMsg.msgId = trans->id;
+									newMsg.endOfMsg = MW_EOF;
+									newMsg.sizeOfData = 0;
+									newMsg.owner = -1;
+									for(it = trans->conList; it != NULL; it = it->next) {
+										mw_send(it->socket, &newMsg, sizeof(newMsg));
+									}
+									globalMsg(MSG_PUSH, createNode(&newMsg));
+								}
+							}
 							break;
 					} //msgtype switch
 			} //unlock after here
