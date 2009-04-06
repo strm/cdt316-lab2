@@ -273,7 +273,7 @@ int main(int argc, char *argv[]) {
 
 	srand(time(NULL));
 	
-	set_severity(0);
+	set_severity(3);
 	globalMsg(MSG_SETUP, MSG_NO_ARG);
 	
 	mw_sock = start_middleware("MIDDLEWARE");

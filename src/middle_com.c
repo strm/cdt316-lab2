@@ -1,5 +1,5 @@
 #include "middle_com.h"
-
+#include "soups.h"
 void initSocketAddress(struct sockaddr_in *name, char *hostName, unsigned short int port) {
 	struct hostent *hostInfo; /* Contains info about the host */
 	/* Socket address format set to AF_INET for internet use. */
@@ -38,7 +38,7 @@ ssize_t mw_send(int fd, void *buf, size_t len) {
 	ssize_t nBytes;
 
 	// Send -1 to inform receiver that the message is from a middleware
-	debug_out(2, "mw_send: fd=%d\n", fd);
+	debug_out(5, "mw_send: fd=%d\n", ((message_t* )buf)->msgId);
 	if((nBytes = send(fd, buf, len, 0)) < 0) {
 		perror("mw_send:send - ");
 	}

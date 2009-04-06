@@ -60,13 +60,15 @@ void * worker_thread ( void * arg ){
 				continue;
 			}
 			else{
-				debug_out(5, "Message recived %d\n", tmp->msg.msgType);
+				debug_out(5, "Message recived %d %d %d\n", tmp->msg.msgType, tmp->msg.msgId, tmp->msg.owner);
 				if(isTransaction(transList, tmp->msg.msgId)){
+					debug_out(4, "transaction found\n");
 					trans = getTransaction(transList, tmp->msg.msgId);
-					debug_out(3, "getTransaction(%d)\n", trans->id);
+					debug_out(5, "getTransaction(%d)\n", trans->id);
 				}
 				else if(tmp->msg.msgType == MW_TRANSACTION){
 					//create new transaction
+					debug_out(4, "creating new transaction\n");
 					if(tmp->msg.owner == MSG_ME)
 						trans = createTransaction( globalId(ID_GET, 0 ));
 					else{
@@ -124,7 +126,7 @@ void * worker_thread ( void * arg ){
 										counter = 0;
 										newMsg.msgType = MW_TRANSACTION;
 										newMsg.endOfMsg = 0;
-										newMsg.msgId = tmp->id;
+										newMsg.msgId = trans->id;
 										newMsg.sizeOfData = 0;
 										newMsg.owner = -1;
 
@@ -164,10 +166,10 @@ void * worker_thread ( void * arg ){
 										debug_out(5, "Failed to parse transaction from client\n");
 										if(removeAll(tmp->msg.msgId));
 										else
-											debug_out(5, "removeAll (failed)\n");
+											debug_out(5, "removeAll (failed %d)\n", tmp->msg.msgId);
 										if(removeTransaction(&transList, tmp->msg.msgId));
 										else
-											debug_out(5, "removeTransaction (failed)\n");
+											debug_out(5, "removeTransaction (failed) %d tmp->msg.msgId\n");
 										/* TODO
 										 * Send Response to client
 										 */
@@ -210,10 +212,10 @@ void * worker_thread ( void * arg ){
 									//remove transaction
 									if(removeAll(tmp->msg.msgId));
 									else
-										debug_out(5, "removeAll (failed)\n");
+										debug_out(5, "removeAll (failed %d)\n", tmp->msg.msgId);
 									if(removeTransaction(&transList, tmp->msg.msgId));
 									else
-										debug_out(5, "removeTransaction (failed)\n");
+										debug_out(5, "removeTransaction (failed %d)\n", tmp->msg.msgId);
 								}
 								else{
 									//transaction locked send ack
@@ -300,16 +302,16 @@ void * worker_thread ( void * arg ){
 								globalMsg(MSG_PUSH, createNode(&newMsg));
 								}
 								else
-									debug_out(5, "removeAll (failed)\n");
+									debug_out(5, "removeAll (failed) (nak) %d\n", tmp->msg.msgId);
 								break;
 								default:
 								//throw out transaction
 								if(removeAll(tmp->msg.msgId));
 								else
-									debug_out(5, "removeAll (failed)\n");
+									debug_out(5, "removeAll (failed %d)\n", tmp->msg.msgId);
 								if(removeTransaction(&transList, tmp->msg.msgId));
 								else
-									debug_out(5, "removeTransaction (failed)\n");
+									debug_out(5, "removeTransaction (failed %d)\n", tmp->msg.msgId);
 								break;
 							}
 							break;
@@ -327,12 +329,12 @@ void * worker_thread ( void * arg ){
 									//log
 									LogHandler(LOG_WRITE_POST, trans->id, &(trans->parsed));
 									//remove transaction since its done
-									if(removeAll(tmp->msg.msgId));
+									if(removeAll(trans->id));
 									else
-										debug_out(5, "removeAll (failed)\n");
-									if(removeTransaction(&transList, tmp->msg.msgId));
+										debug_out(5, "removeAll (failed) (commit %d)\n", tmp->msg.msgId);
+									if(removeTransaction(&trans, trans->id));
 									else
-										debug_out(5, "removeTransaction (failed)\n");
+										debug_out(5, "removeTransaction (failed) (commit)\n", tmp->msg.msgId);
 								}
 								else
 									debug_out(4, "Failed to send response to client\n");

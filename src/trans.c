@@ -41,6 +41,12 @@ int removeTransaction(transNode ** list, int id){
 	else{
 		current = (*list);
 		prev = (*list);
+		if(current->id == id && current->next == NULL){
+			//free(current);
+			(*list) = NULL;
+			debug_out(5, "removing(special) %d\n", id);
+			return TRUE;
+		}
 		do{
 			printf("%d\n", current->id);
 			if( current->id == id){
@@ -49,7 +55,7 @@ int removeTransaction(transNode ** list, int id){
 				else
 					prev->next = current->next;
 				free(current);
-				printf("removing %d\n", id);
+				debug_out(5, "removing %d\n", id);
 				return TRUE;
 			}
 			else{
@@ -92,7 +98,7 @@ transNode * createTransaction(int id){
 	tmp->next = NULL;
 	tmp->parsed = NULL;
 	tmp->unparsed = NULL;
-	tmp->conList;
+	tmp->conList = NULL;
 	return tmp;
 }
 
