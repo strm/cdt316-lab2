@@ -7,6 +7,7 @@
 #include "listen_thread.h"
 #include "connections.h"
 #include "work_thread.h"
+#include "logging.h"
 
 #define NS_LOOKUP_ATTEMPTS	(10)
 #define NS_SLEEP_DELAY		(1)
@@ -41,6 +42,29 @@ int ConnectMiddleware(char *ns_entry_data, int csock, struct sockaddr_in *hostIn
 		send(csock, (void *)&REMOVETHIS, sizeof(long), 0);
 		return MW_CONNECT_SUCCESS;
 	}
+}
+
+int SyncLogs() {
+	int result, last_id, next_id;
+	result = LogHandler(LOG_LAST_ID, 0, NULL, &last_id);
+	varList *list = NULL, *it;
+
+	if(result > 0) { /* There is some syncing to be done  */
+		debug_out(5, "Sync: There are transactions that have not been commited\n");
+		/* TODO: Add synching here plix */
+		/* last_id - result = last id in post log */
+		while(LogHandler(LOG_GET_NEXT_PRE_ID, last_id, NULL, &next_id) != -1) {
+			// Read next precommit entry
+			LogHandler(LOG_READ_PRE, next_id, &list, &result);
+			printf("Read transaction %d:\n", result);
+			for(it = list; it != NULL; it = it->next)
+				printf("%d %s %s %s\n", it->data.op, it->data.arg1, it->data.arg2, it->data.arg3);
+			// Create a transaction
+			// Send to worker thread
+			// Send commit to worker thread
+		}
+	}
+	return 0;
 }
 
 int start_middleware(char *database) {
@@ -262,7 +286,7 @@ int main(int argc, char *argv[]) {
 	//connection c;
 	pthread_t listenThread;
 	pthread_t work;
-	pthread_t alive;
+	//pthread_t alive;
 
 	if(argc < 2) {
 		fprintf(stderr, "Insufficient parameters for %s\n", argv[0]);
