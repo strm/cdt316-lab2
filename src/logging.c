@@ -54,7 +54,7 @@ int LogHandler(char cmd, int id_in, varList **commands, int *id_out) {
 				for(*id_out = LOG_NO_ID; *id_out != id_in;) {
 					if(ReadLogEntry(post_file, id_out, commands) == -1) {
 						*id_out = LOG_NO_ID;
-						ret = LOG_NO_ID;
+						ret = -1;
 					}
 				}
 			}
@@ -65,7 +65,7 @@ int LogHandler(char cmd, int id_in, varList **commands, int *id_out) {
 				for(*id_out = LOG_NO_ID; *id_out != id_in;) {
 					if(ReadLogEntry(pre_file, id_out, commands) == -1) {
 						*id_out = LOG_NO_ID;
-						ret = LOG_NO_ID;
+						ret = -1;
 					}
 				}
 			}
@@ -74,6 +74,18 @@ int LogHandler(char cmd, int id_in, varList **commands, int *id_out) {
 			if(id_out != NULL) {
 				ret = GetLastId(pre_log, post_log, id_out);
 			}
+			else
+				ret = -1;
+			break;
+		case LOG_GET_NEXT_PRE_ID:
+			if(id_out != NULL)
+				*id_out = GetNextId(pre_log, id_in);
+			else
+				ret = -1;
+			break;
+		case LOG_GET_NEXT_POST_ID:
+			if(id_out != NULL)
+				*id_out = GetNextId(post_log, id_in);
 			else
 				ret = -1;
 			break;
@@ -90,6 +102,53 @@ int LogHandler(char cmd, int id_in, varList **commands, int *id_out) {
 		fclose(post_file);
 	}
 
+	return ret;
+}
+
+int JumpToNextTrans(FILE **logfile) {
+	int ret = 0;
+	char line[LINE_LEN];
+
+	while(1) {
+		if(fscanf(*logfile, "%s", line) == EOF) {
+			ret = -1;
+			break;
+		}
+		else if(strncmp(line, LOG_TRANS_START) == 0) {
+			ret = 0;
+			break;
+		}
+	}
+	return ret;
+}
+
+int GetNextId(char *logfile, int current_id) {
+	int ret = LOG_NO_ID;
+	int tmp;
+	FILE *log = fopen(logfile, "r");
+	
+	if(!log)
+		return ret;
+
+	while(1) {
+		if(JumpToNextTrans(&log) == -1) {
+			break;
+		}
+		if(fscanf(log, "%d", &tmp) == EOF) {
+			break;
+		}
+		else if(tmp > current_id) {
+			// We have the next id, no reason to continue
+			break;
+		}
+	}
+
+	if(tmp > current_id)
+		ret = tmp;
+	else
+		ret = LOG_NO_ID;
+
+	fclose(log);
 	return ret;
 }
 
@@ -118,10 +177,11 @@ int GetLastId(char *pre_log, char *post_log, int *result) {
 
 	if(pre_id > post_id) {
 		*result = pre_id;
-		return pre_id - post_id;
 	}
-	*result = post_id;
-	return 0;
+	else {
+		*result = post_id;
+	}
+	return pre_id - post_id;
 }
 
 log_type LogEntryType(char *type) {

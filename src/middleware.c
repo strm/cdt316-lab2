@@ -45,12 +45,24 @@ int ConnectMiddleware(char *ns_entry_data, int csock, struct sockaddr_in *hostIn
 }
 
 int SyncLogs() {
-	int result, last_id;
+	int result, last_id, next_id;
 	result = LogHandler(LOG_LAST_ID, 0, NULL, &last_id);
+	varList *list = NULL, *it;
 
-	if(result > 0) {
+	if(result > 0) { /* There is some syncing to be done  */
 		debug_out(5, "Sync: There are transactions that have not been commited\n");
-	/* TODO: Add synching here plix */	
+		/* TODO: Add synching here plix */
+		/* last_id - result = last id in post log */
+		while(LogHandler(LOG_GET_NEXT_PRE_ID, last_id, NULL, &next_id) != -1) {
+			// Read next precommit entry
+			LogHandler(LOG_READ_PRE, next_id, &list, &result);
+			printf("Read transaction %d:\n", result);
+			for(it = list; it != NULL; it = it->next)
+				printf("%d %s %s %s\n", it->data.op, it->data.arg1, it->data.arg2, it->data.arg3);
+			// Create a transaction
+			// Send to worker thread
+			// Send commit to worker thread
+		}
 	}
 	return 0;
 }
