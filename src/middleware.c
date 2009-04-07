@@ -48,27 +48,70 @@ int SyncLogs() {
 	int result, last_id, next_id;
 	result = LogHandler(LOG_LAST_ID, 0, NULL, &last_id);
 	varList *list = NULL, *it;
+	message_t tmp_msg;
+
+	if(result > 0) 
+		debug_out(5, "Sync: Pre-commit log ahead, last id is %d\n", last_id);
+	else 
+		debug_out(5, "Sync: Commit is ahead or equal, last id is %d\n", last_id);
+
 
 	if(result > 0) { /* There is some syncing to be done  */
 		debug_out(5, "Sync: There are transactions that have not been commited\n");
-		/* TODO: Add synching here plix */
 		/* last_id - result = last id in post log */
-		while(LogHandler(LOG_GET_NEXT_PRE_ID, last_id, NULL, &next_id) != -1) {
+		last_id -= result;
+		while(1) {
+			LogHandler(LOG_GET_NEXT_PRE_ID, last_id, NULL, &next_id);
+			if(next_id == LOG_NO_ID)
+				break;
+			debug_out(5, "prev_id: %d\t next_id: %d\n", last_id, next_id);
 			// Read next precommit entry
 			LogHandler(LOG_READ_PRE, next_id, &list, &result);
 			printf("Read transaction %d:\n", result);
-			for(it = list; it != NULL; it = it->next)
-				printf("%d %s %s %s\n", it->data.op, it->data.arg1, it->data.arg2, it->data.arg3);
-			// Create a transaction
-			// Send to worker thread
-			// Send commit to worker thread
+
+			last_id = next_id;
 		}
+		tmp_msg.sizeOfData = 0;
+		tmp_msg.msgType = MW_TRANSACTION;
+		tmp_msg.endOfMsg = 0;
+		tmp_msg.msgId = result;
+		tmp_msg.owner = MSG_PRE_LOG;
+
+		for(it = list; it != NULL; it = it->next) {
+			tmp_msg.data[tmp_msg.sizeOfData] = it->data;
+			printf("%d %s %s \n", it->data.op, it->data.arg1, it->data.arg2);
+			if(tmp_msg.sizeOfData == MSG_MAX_DATA) {
+				if(it->next == NULL) {
+					tmp_msg.endOfMsg = MW_EOF;
+				}
+				globalMsg(MSG_LOCK, MSG_NO_ARG);
+				globalMsg(MSG_PUSH, createNode(&tmp_msg));
+				globalMsg(MSG_UNLOCK, MSG_NO_ARG);
+
+				tmp_msg.sizeOfData = 0;
+			}
+			tmp_msg.sizeOfData++;
+		}
+		if(tmp_msg.endOfMsg != MW_EOF) {
+			tmp_msg.endOfMsg = MW_EOF;
+			globalMsg(MSG_LOCK, MSG_NO_ARG);
+			globalMsg(MSG_PUSH, createNode(&tmp_msg));
+			globalMsg(MSG_UNLOCK, MSG_NO_ARG);
+		}
+		tmp_msg.msgType = MW_COMMIT;
+		tmp_msg.owner = -1;
+		tmp_msg.socket = -1;
+		tmp_msg.msgId = result;
+		globalMsg(MSG_LOCK, MSG_NO_ARG);
+		globalMsg(MSG_PUSH, createNode(&tmp_msg));
+		globalMsg(MSG_UNLOCK, MSG_NO_ARG);
 	}
 	return 0;
 }
 
 int start_middleware(char *database) {
 	int sock;
+	int first_connect = 1;
 	char address[ARG_SIZE];
 	socklen_t reallen;
 	struct sockaddr_in real;
@@ -82,6 +125,7 @@ int start_middleware(char *database) {
 	int conn_retries;
 	struct sockaddr_in hostInfo;
 	connection conn;
+	message_t tmp;
 
 	if (myname[0] != '\0') {
 		debug_out(2, "Already registered!\n");
@@ -93,6 +137,8 @@ int start_middleware(char *database) {
 		debug_out(2,"Error setting up port\n");
 		exit(1);
 	}
+
+	SyncLogs();
 
 	reallen = sizeof(struct sockaddr_in);
 	if (getsockname(sock, (struct sockaddr *) &real, &reallen) < 0) {
@@ -118,6 +164,13 @@ int start_middleware(char *database) {
 					debug_out(3, "Trying to connect to '%s'\n", ns_entry_data);
 					if(ConnectMiddleware(entry_data_copy, conn_sock, &hostInfo) == MW_CONNECT_SUCCESS) {
 						debug_out(5, "Connected to %s (%s, %d)\n", ns_entry, ns_entry_data, conn_sock);
+						if(first_connect) {
+							first_connect = 0;
+							tmp.msgType = MW_SYNCHRONIZE;
+							tmp.msgId = -1;
+							tmp.owner = 0;
+							tmp.socket = conn_sock;
+						}
 						CreateConnectionInfo(
 								&conn,
 								conn_sock,
@@ -258,6 +311,8 @@ int start_middleware(char *database) {
 			ns_miss_count++;
 		}
 	}
+	if(!first_connect)
+		mw_send(conn_sock, (void *)&tmp, sizeof(tmp));
 	debug_out(3, "Returning from start_middleware\n");
 	return sock;
 }

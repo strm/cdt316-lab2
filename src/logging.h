@@ -37,6 +37,8 @@
 #define LOG_PATH							("./logs/")
 #define LOG_POST_NAME					("-commit.log")
 #define LOG_PRE_NAME					("-precommit.log")
+#define LOG_PRE								(120)
+#define LOG_POST							(121)
 
 #define E_BAD_PRE							(-10)
 #define E_BAD_POST						(-11)
@@ -49,10 +51,11 @@ typedef enum {
 
 int LogHandler(char cmd, int id_in, varList **cmds, int *id_out);
 int WriteLogEntry(FILE *logfile, int id, varList *cmd);
-int ReadLogEntry(FILE *logfile, int *id, varList **cmd);
+int ReadLogEntry(FILE **logfile, int *id, varList **cmd);
 int GetLastId(char *pre_log, char *post_log, int *result);
 int GetNextId(char *logfile, int current_id);
 int JumpToNextTrans(FILE **logfile);
+int JumpToTrans(FILE **logfile, int id);
 
 #endif
 

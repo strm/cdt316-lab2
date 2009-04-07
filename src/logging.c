@@ -51,22 +51,18 @@ int LogHandler(char cmd, int id_in, varList **commands, int *id_out) {
 		case LOG_READ_POST:
 			post_file = fopen(post_log, "r");
 			if(post_file != NULL) {
-				for(*id_out = LOG_NO_ID; *id_out != id_in;) {
-					if(ReadLogEntry(post_file, id_out, commands) == -1) {
-						*id_out = LOG_NO_ID;
-						ret = -1;
-					}
+				if(ReadLogEntry(&post_file, &id_in, commands) == -1) {
+					*id_out = LOG_NO_ID;
+					ret = -1;
 				}
 			}
 			break;
 		case LOG_READ_PRE:
 			pre_file = fopen(pre_log, "r");
 			if(pre_file != NULL) {
-				for(*id_out = LOG_NO_ID; *id_out != id_in;) {
-					if(ReadLogEntry(pre_file, id_out, commands) == -1) {
-						*id_out = LOG_NO_ID;
-						ret = -1;
-					}
+				if(ReadLogEntry(&pre_file, &id_in, commands) == -1) {
+					*id_out = LOG_NO_ID;
+					ret = -1;
 				}
 			}
 			break;
@@ -114,9 +110,36 @@ int JumpToNextTrans(FILE **logfile) {
 			ret = -1;
 			break;
 		}
-		else if(strncmp(line, LOG_TRANS_START) == 0) {
+		else if(strncmp(line, LOG_TRANS_START, LINE_LEN) == 0) {
 			ret = 0;
 			break;
+		}
+	}
+	return ret;
+}
+
+int JumpToTrans(FILE **logfile, int id) {
+	int ret = LOG_NO_ID;
+	char line[LINE_LEN];
+
+	if(fscanf(*logfile, "%s", line) != EOF) {
+		if(strncmp(line, LOG_TRANS_START, strlen(LOG_TRANS_START)) == 0) {
+			fscanf(*logfile, "%d", &ret);
+			if(ret == id) {
+				return ret;
+			}
+			else
+				ret = -1;
+		}
+	}
+
+	while(1) {
+		if(JumpToNextTrans(logfile) == 0) {
+			fscanf(*logfile, "%d", &ret);
+			if(ret == id)
+				break;
+			else
+				ret = -1;
 		}
 	}
 	return ret;
@@ -143,12 +166,15 @@ int GetNextId(char *logfile, int current_id) {
 		}
 	}
 
+	printf("GetNextId: tmp: %d, current_id %d\n", tmp, current_id);
+
 	if(tmp > current_id)
 		ret = tmp;
 	else
 		ret = LOG_NO_ID;
 
-	fclose(log);
+	if(log)
+		fclose(log);
 	return ret;
 }
 
@@ -253,67 +279,61 @@ int WriteLogEntry(FILE *logfile, int id, varList *cmd) {
 	return 0;
 }
 
-int ReadLogEntry(FILE *logfile, int *id, varList **cmd) {
-	int ret = 0, transaction = 0;
+int ReadLogEntry(FILE **logfile, int *id, varList **cmd) {
+	int ret = 0;
 	char tmp[ARG_SIZE];
 	command data;
 
-	while(1) {
-		if(fscanf(logfile, "%s", tmp) != EOF) {
-			if(LogEntryType(tmp) == TRANS_START) {
-				transaction = 1;
-				break;
-			}
-		}
-		else
-			return -1;
+	if(JumpToTrans(logfile, *id) == -1) {
+		return -1;
 	}
 
-	if(transaction) {
-		data.op = L_NOCMD;
-		while((fscanf(logfile, "%s", tmp) != -1) && transaction) {
-			switch(LogEntryType(tmp)) {
-				case L_ASSIGN:
-					data.op = L_ASSIGN;
-					fscanf(logfile, "%s %s", data.arg1, data.arg2);
-					break;
-				case L_ADD:
-					data.op = L_ADD;
-					fscanf(logfile, "%s %s %s", data.arg1, data.arg2, data.arg3);
-					break;
-				case L_PRINT:
-					data.op = L_PRINT;
-					fscanf(logfile, "%s", data.arg1);
-					break;
-				case L_DELETE:
-					data.op = L_DELETE;
-					fscanf(logfile, "%s", data.arg1);
-					break;
-				case L_SLEEP:
-					data.op = L_SLEEP;
-					fscanf(logfile, "%s", data.arg1);
-					break;
-				case L_QUIT:
-					data.op = L_QUIT;
-					break;
-				case L_IGNORE:
-					data.op = L_IGNORE;
-					break;
-				case L_MAGIC:
-					data.op = L_MAGIC;
-					fscanf(logfile, "%s %s %s", data.arg1, data.arg2, data.arg3);
-					break;
-				case TRANS_END:
-					data.op = L_NOCMD;
-					transaction = 0;
-					break;
-				default:
-					break;
-			}
-			if(transaction && data.op != L_NOCMD)
-				ret++;
-				varListPush(data, cmd);
+	data.op = L_NOCMD;
+	while((fscanf(*logfile, "%s", tmp) != -1)) {
+		switch(LogEntryType(tmp)) {
+			case L_ASSIGN:
+				data.op = ASSIGN;
+				fscanf(*logfile, "%s %s", data.arg1, data.arg2);
+				break;
+			case L_ADD:
+				data.op = ADD;
+				fscanf(*logfile, "%s %s %s", data.arg1, data.arg2, data.arg3);
+				break;
+			case L_PRINT:
+				data.op = PRINT;
+				fscanf(*logfile, "%s", data.arg1);
+				break;
+			case L_DELETE:
+				data.op = DELETE;
+				fscanf(*logfile, "%s", data.arg1);
+				break;
+			case L_SLEEP:
+				data.op = SLEEP;
+				fscanf(*logfile, "%s", data.arg1);
+				break;
+			case L_QUIT:
+				data.op = QUIT;
+				break;
+			case L_IGNORE:
+				data.op = IGNORE;
+				break;
+			case L_MAGIC:
+				data.op = MAGIC;
+				fscanf(*logfile, "%s %s %s", data.arg1, data.arg2, data.arg3);
+				break;
+			case TRANS_END:
+				data.op = NOCMD;
+				break;
+			default:
+				break;
 		}
+		if(data.op != NOCMD) {
+			ret++;
+		}
+		else {
+			break;
+		}
+		varListPush(data, cmd);
 	}
 
 	return ret;

@@ -18,6 +18,7 @@
 #include "connections.h"
 #include "global.h"
 #include "soups.h"
+#include "logging.h"
 
 // Temporary define, these values will be determined elsewhere in the future
 #define PORT			(12345)

@@ -15,83 +15,100 @@ int HandleMessage(message_t *msg, int from) {
 	int ret = 0;
 	node *newNode;
 	int i;
-	//message_t tmp;
+	int next_id, result;
+	varList *list = NULL, *it;
+	message_t tmp;
 
 	//if(globalId(ID_CHECK, msg->msgId)) {
-		if(msg->endOfMsg) ret = MW_EOF;
-	
-		switch(msg->msgType) {
-			case MW_TRANSACTION:
-			case MW_COMMIT:
-			case MW_ACK:
-			case MW_NAK:
-				// Check if we need to synchronize:
-				// if (our ID = their ID - 1): Someone else is doing a transaction, increase our ID to compensate
-				// if (our ID < their ID - 1): We have missed some transaction, lock down and send a sync message to them
-				//if(msg->owner == msg->msgId - 1) {
-					//debug_out(3, "msg->owner == msg->msgId - 1\n");
-					//if(globalId(ID_CHECK, ++msg->msgId)) {
-					debug_out(4, "msgType: %d\n", msg->msgType);
-					for(i = 0; i < 8; i++) {
-						debug_out(4, "Got %d %s %s %s\n",
-								msg->data[i].op,
-								msg->data[i].arg1,
-								msg->data[i].arg2,
-								msg->data[i].arg3);
-					}
-					debug_out(4, "---\n");
-					msg->socket = from;
-						//globalId(ID_CHANGE, msg->owner);
-						newNode = createNode(msg);
-						globalMsg(MSG_LOCK, MSG_NO_ARG);
-						globalMsg(MSG_PUSH, newNode);
-						globalMsg(MSG_UNLOCK, MSG_NO_ARG);
-					/*}
-					else {
-						debug_out(3, "Failed ID_CHECK\n");
-					}*/
-				//}
-				/*else if (msg->owner < msg->msgId - 1) {
-					debug_out(3, "msg->owner < msg->msgId -1\n");
-					if(globalId(ID_CHECK, msg->msgId)) {
-						debug_out(3, "globalId(ID_CHECK, msg->msgId\n");
-						tmp.msgType = MW_SYNCHRONIZE;
-						tmp.endOfMsg = TRUE;
-						// TODO: THIS REQUIRES LOGGING FEATURES!!!
-					}
-					// THIS IS THE DANGEROUS THING WHERE THINGS REALLY WENT TOTALLY WRONG AND WE HAVE TO SYNC THINGS!!!
-				}*/
-				/*else {
-					debug_out(3, "msg->owner > msg->msgId -1\n");
-					newNode = createNode(msg);
-					globalMsg(MSG_LOCK, MSG_NO_ARG);
-					globalMsg(MSG_PUSH, newNode);
-					globalMsg(MSG_UNLOCK, MSG_NO_ARG);
-				}*/
-				break;
-			case MW_SYNCHRONIZE:
-				if(globalId(ID_CHECK, msg->msgId)) { // everything seems to be in order
+	if(msg->endOfMsg) ret = MW_EOF;
 
+	switch(msg->msgType) {
+		case MW_TRANSACTION:
+		case MW_COMMIT:
+		case MW_ACK:
+		case MW_NAK:
+			// TODO: Check if we need to synchronize:
+			debug_out(4, "msgType: %d\n", msg->msgType);
+			for(i = 0; i < 8; i++) {
+				debug_out(4, "Got %d %s %s %s\n",
+						msg->data[i].op,
+						msg->data[i].arg1,
+						msg->data[i].arg2,
+						msg->data[i].arg3);
+			}
+			debug_out(4, "---\n");
+			msg->socket = from;
+			newNode = createNode(msg);
+			globalMsg(MSG_LOCK, MSG_NO_ARG);
+			globalMsg(MSG_PUSH, newNode);
+			globalMsg(MSG_UNLOCK, MSG_NO_ARG);
+			break;
+		case MW_SYNCHRONIZE:
+			debug_out(5, "Got SYNCHRONIZE request from other middleware\n");
+			/*if(globalId(ID_CHECK, msg->msgId)) { // everything seems to be in order
+				debug_out(5, "According to globalId everything is fine\n");
+			}
+			else { // Sender seems to have missed something earlier*/
+				debug_out(5, "According to globalId something needs to sync\n");
+				LogHandler(LOG_GET_NEXT_POST_ID, msg->msgId, NULL, &next_id);
+				while(next_id != LOG_NO_ID) {
+					debug_out(5, "Reading a helluvalot of log posts: %d\n", next_id);
+					LogHandler(LOG_READ_POST, next_id, &list, &result);
+					debug_out(5, "Read a log post: %d\n", next_id);
+					LogHandler(LOG_GET_NEXT_POST_ID, next_id, NULL, &next_id);
 				}
-				else { // Sender seems to have missed something earlier
-					//TODO: We need to send all transactions that the sender has missed
+				debug_out(5, "Got out of while loop before seg fault\n");
+
+				tmp.sizeOfData = 0;
+				tmp.msgType = MW_TRANSACTION;
+				tmp.endOfMsg = 0;
+				tmp.msgId = result;
+				tmp.owner = 0;
+
+				for(it = list; it != NULL; it = it->next) {
+					debug_out(5, "Looping varlist\n");
+					tmp.data[tmp.sizeOfData] = it->data;
+					if(tmp.sizeOfData == MSG_MAX_DATA) {
+						debug_out(5, "Max data reached for tmp\n");
+						if(it->next == NULL) {
+							debug_out(5, "There are no more messages\n");
+							tmp.endOfMsg = MW_EOF;
+						}
+						else
+							debug_out(5, "There are more messages\n");
+						mw_send(from, (void *)&tmp, sizeof(tmp));
+						tmp.sizeOfData = 0;
+					}
+					tmp.sizeOfData++;
 				}
-				break;
-			case MW_CONNECT:
-				/* TODO: this is a reply from middleware we connected to, contains information about sequence number etc. */
-				break;
-			case MW_DISCONNECT:
-				/* TODO: Add mutex to lock the connection list so no bad things might happen */
-				ret = MW_DISCONNECT;
-				ConnectionHandler(
-						REMOVE_BY_SOCKET,
-						NULL,
-						NULL,
-						NULL,
-						from);
-				close(from);
-				break;
-		}
+				debug_out(5, "Got out of forloop\n");
+				if(tmp.endOfMsg != MW_EOF) {
+					tmp.endOfMsg = MW_EOF;
+					mw_send(from, (void *)&tmp, sizeof(tmp));
+				}
+
+				tmp.msgType = MW_COMMIT;
+				tmp.owner = -1;
+				tmp.socket = -1;
+				tmp.msgId = result;
+				mw_send(from, (void *)&tmp, sizeof(tmp));
+			//}
+			break;
+		case MW_CONNECT:
+			/* TODO: this is a reply from middleware we connected to, contains information about sequence number etc. */
+			break;
+		case MW_DISCONNECT:
+			/* TODO: Add mutex to lock the connection list so no bad things might happen */
+			ret = MW_DISCONNECT;
+			ConnectionHandler(
+					REMOVE_BY_SOCKET,
+					NULL,
+					NULL,
+					NULL,
+					from);
+			close(from);
+			break;
+	}
 	//}
 	/*else { // The message id was lower then we expected
 		debug_out(3, "undefined stuff happening\n");
@@ -101,9 +118,9 @@ int HandleMessage(message_t *msg, int from) {
 		tmp.owner = msg->msgId;
 
 		if(send(from, (void *)&tmp, sizeof(message_t), 0) < 0) {
-			perror("send: ");
+		perror("send: ");
 		}
-	}*/
+		}*/
 
 	return ret;
 }

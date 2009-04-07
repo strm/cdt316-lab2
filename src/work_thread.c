@@ -327,16 +327,18 @@ void * worker_thread ( void * arg ){
 					/*
 					 * Update transaction to db
 					 */
-					LogHandler(LOG_WRITE_PRE, trans->id, &(trans->parsed));
+					if(trans->owner != MSG_PRE_LOG) {
+						debug_out(5, "msg.owner is '%d', writing to pre log\n", trans->owner);
+						LogHandler(LOG_WRITE_PRE, trans->id, &(trans->parsed), NULL);
+					}
 					debug_out(5, "We are commiting trans %d\n", trans->id);
 					if(commitParse(trans)){
+						LogHandler(LOG_WRITE_POST, trans->id, &(trans->parsed), NULL);
 						if(sendResponse(trans) != 0){
 							if(trans->owner == MSG_ME)
 								debug_out(4, "Response sent to client\n");
 							else
 								debug_out(4, "Done with remote transaction\n");
-							//log
-							LogHandler(LOG_WRITE_POST, trans->id, &(trans->parsed));
 							//remove transaction since its done
 							if(removeAll(trans->id))
 								debug_out(5, "Lock removed for %d\n", trans->id);
