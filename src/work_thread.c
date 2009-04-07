@@ -133,9 +133,9 @@ void * worker_thread ( void * arg ){
 										iter = trans->parsed;
 										if(iter != NULL){
 											for(;iter != NULL; iter = iter->next){
-												debug_out(3, "newMsg = %s %s %s\n", iter->data.arg1 , iter->data.arg2, iter->data.arg3);
+												debug_out(3, "newMsg = %s %s %s %d\n", iter->data.arg1 , iter->data.arg2, iter->data.arg3, newMsg.sizeOfData);
 												newMsg.data[newMsg.sizeOfData] = iter->data;
-												if(counter == 7){
+												if(counter == MSG_MAX_DATA-1){
 													/*
 													 * Send Message here
 													 */
@@ -147,8 +147,8 @@ void * worker_thread ( void * arg ){
 															mw_send(it->socket, &newMsg, sizeof(message_t));
 													}
 													//clean up
-													newMsg.sizeOfData = 0;
-													counter = 0;
+													newMsg.sizeOfData = -1;
+													counter = -1;
 												}
 												counter++;
 												newMsg.sizeOfData++;
@@ -163,7 +163,7 @@ void * worker_thread ( void * arg ){
 										}
 										debug_out(5, "Local Parse(DONE) sleeping for 5sec\n");
 										sleep(MW_SLEEP);
-										break;
+									break;
 									case LOCALPARSE_FAILED:
 										//unrecoverable error
 										debug_out(5, "Failed to parse transaction from client\n");

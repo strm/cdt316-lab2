@@ -311,8 +311,8 @@ int start_middleware(char *database) {
 			ns_miss_count++;
 		}
 	}
-	if(!first_connect)
-		mw_send(conn_sock, (void *)&tmp, sizeof(tmp));
+	//if(!first_connect)
+		//mw_send(conn_sock, (void *)&tmp, sizeof(tmp));
 	debug_out(3, "Returning from start_middleware\n");
 	return sock;
 }
