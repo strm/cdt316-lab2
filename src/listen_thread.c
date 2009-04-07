@@ -70,12 +70,12 @@ int HandleMessage(message_t *msg, int from) {
 					tmp.data[tmp.sizeOfData] = it->data;
 					if(tmp.sizeOfData == MSG_MAX_DATA) {
 						debug_out(5, "Max data reached for tmp\n");
-						if(it->next == NULL) {
+						/*if(it->next == NULL) {
 							debug_out(5, "There are no more messages\n");
 							tmp.endOfMsg = MW_EOF;
 						}
 						else
-							debug_out(5, "There are more messages\n");
+							debug_out(5, "There are more messages\n");*/
 						mw_send(from, (void *)&tmp, sizeof(tmp));
 						tmp.sizeOfData = 0;
 					}

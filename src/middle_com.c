@@ -40,7 +40,7 @@ ssize_t mw_send(int fd, void *buf, size_t len) {
 	// Send -1 to inform receiver that the message is from a middleware
 	debug_out(5, "mw_send: fd=%d\n", ((message_t* )buf)->msgId);
 	if((nBytes = send(fd, buf, len, MSG_NOSIGNAL)) < 0) {
-		perror("mw_send:send - ");
+		perror("mw_send:send");
 	}
 	return nBytes;
 }
