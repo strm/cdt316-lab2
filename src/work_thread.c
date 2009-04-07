@@ -90,26 +90,26 @@ void * worker_thread ( void * arg ){
 						}
 						trans->socket = tmp->msg.socket;
 						if(trans->owner == MSG_ME){
-						/**
-						 * READ FROM CLIENT HERE
-						 * TODO TODO TODO TODO
-						 */
-						counter = 0;
-						printf("read from client %d\n", tmp->msg.sizeOfData);
-						for(n = tmp->msg.sizeOfData; n; n--){
-							res = read(tmp->msg.socket, &cmd, sizeof(command));
-							if (res < sizeof(command)){
-								my_perror(2, "force_read");
+							/**
+							 * READ FROM CLIENT HERE
+							 * TODO TODO TODO TODO
+							 */
+							counter = 0;
+							printf("read from client %d\n", tmp->msg.sizeOfData);
+							for(n = tmp->msg.sizeOfData; n; n--){
+								res = read(tmp->msg.socket, &cmd, sizeof(command));
+								if (res < sizeof(command)){
+									my_perror(2, "force_read");
+								}
+								else{
+									cmd.op = ntohl(cmd.op);
+									varListPush(cmd,(&trans->unparsed));
+									debug_out(4, "cmd.seq = %d\n", ntohl(cmd.seq));
+									counter++;
+								}
 							}
-							else{
-								cmd.op = ntohl(cmd.op);
-								varListPush(cmd,(&trans->unparsed));
-								debug_out(4, "cmd.seq = %d\n", ntohl(cmd.seq));
-								counter++;
-							}
-						}
-						if(counter == tmp->msg.sizeOfData)
-							tmp->msg.endOfMsg = MW_EOF;
+							if(counter == tmp->msg.sizeOfData)
+								tmp->msg.endOfMsg = MW_EOF;
 						}
 					}
 				}
@@ -308,92 +308,92 @@ void * worker_thread ( void * arg ){
 								newMsg.msgId = trans->id;
 
 								globalMsg(MSG_PUSH, createNode(&newMsg));
-								}
-								else
-									debug_out(5, "removeAll (failed) (nak) %d\n", tmp->msg.msgId);
-								break;
-								default:
-								//throw out transaction
-								if(removeAll(trans->id));
-								else
-									debug_out(5, "removeAll (failed %d)\n", tmp->msg.msgId);
-								if(removeTransaction(&transList, trans->id));
-								else
-									debug_out(5, "removeTransaction (failed %d)\n", trans->id);
-								break;
-							}
-							break;
-						case MW_COMMIT:
-							/*
-							 * Update transaction to db
-							 */
-							LogHandler(LOG_WRITE_PRE, trans->id, &(trans->parsed));
-							debug_out(5, "We are commiting trans %d\n", trans->id);
-							if(commitParse(trans)){
-								if(sendResponse(trans) != 0){
-									if(trans->owner == MSG_ME)
-										debug_out(4, "Response sent to client\n");
-									else
-										debug_out(4, "Done with remote transaction\n");
-									//log
-									LogHandler(LOG_WRITE_POST, trans->id, &(trans->parsed));
-									//remove transaction since its done
-									if(removeAll(trans->id))
-										debug_out(5, "Lock removed for %d\n", trans->id);
-									else
-										debug_out(5, "removeAll (failed) (commit %d)\n", tmp->msg.msgId);
-									if(removeTransaction(&transList, trans->id))
-										debug_out(5, "Transaction removed %d\n", tmp->msg.msgId);
-									else
-										debug_out(5, "removeTransaction (failed) (commit)\n", tmp->msg.msgId);
-								}
-								else
-									debug_out(4, "Failed to send response to client\n");
 							}
 							else
-								debug_out(5, "commitParse(failed)\n");
-							if(transList == NULL)
-										debug_out(5, "list is empty\n");
-							//we are not the owner
+								debug_out(5, "removeAll (failed) (nak) %d\n", tmp->msg.msgId);
 							break;
-						case MW_ALIVE:
-							/**
-							 * Update connection list here
-							 */
-							debug_out(5, "Starting to remove a middleware that is down\n");
-							for(trans = transList; trans != NULL; trans = trans->next){
-								if(trans->socket == tmp->msg.socket){
-									//send nak to everyone
-									newMsg.msgType = MW_NAK;
+						default:
+							//throw out transaction
+							if(removeAll(trans->id));
+							else
+								debug_out(5, "removeAll (failed %d)\n", tmp->msg.msgId);
+							if(removeTransaction(&transList, trans->id));
+							else
+								debug_out(5, "removeTransaction (failed %d)\n", trans->id);
+							break;
+					}
+					break;
+				case MW_COMMIT:
+					/*
+					 * Update transaction to db
+					 */
+					LogHandler(LOG_WRITE_PRE, trans->id, &(trans->parsed));
+					debug_out(5, "We are commiting trans %d\n", trans->id);
+					if(commitParse(trans)){
+						if(sendResponse(trans) != 0){
+							if(trans->owner == MSG_ME)
+								debug_out(4, "Response sent to client\n");
+							else
+								debug_out(4, "Done with remote transaction\n");
+							//log
+							LogHandler(LOG_WRITE_POST, trans->id, &(trans->parsed));
+							//remove transaction since its done
+							if(removeAll(trans->id))
+								debug_out(5, "Lock removed for %d\n", trans->id);
+							else
+								debug_out(5, "removeAll (failed) (commit %d)\n", tmp->msg.msgId);
+							if(removeTransaction(&transList, trans->id))
+								debug_out(5, "Transaction removed %d\n", tmp->msg.msgId);
+							else
+								debug_out(5, "removeTransaction (failed) (commit)\n", tmp->msg.msgId);
+						}
+						else
+							debug_out(4, "Failed to send response to client\n");
+					}
+					else
+						debug_out(5, "commitParse(failed)\n");
+					if(transList == NULL)
+						debug_out(5, "list is empty\n");
+					//we are not the owner
+					break;
+				case MW_ALIVE:
+					/**
+					 * Update connection list here
+					 */
+					debug_out(5, "Starting to remove a middleware that is down\n");
+					for(trans = transList; trans != NULL; trans = trans->next){
+						if(trans->socket == tmp->msg.socket){
+							//send nak to everyone
+							newMsg.msgType = MW_NAK;
+							newMsg.msgId = trans->id;
+							newMsg.endOfMsg = MW_EOF;
+							newMsg.sizeOfData = 0;
+							newMsg.owner = -1;
+							for(it = trans->conList; it != NULL; it = it->next) {
+								mw_send(it->socket, &newMsg, sizeof(newMsg));
+							}
+							globalMsg(MSG_PUSH, createNode(&newMsg));
+						}
+						else{
+							for(it = trans->conList; it != NULL; it = it->next){
+								if(it->socket == tmp->msg.socket){
+									it->socket = -1;
+									newMsg.msgType = MW_ACK;
 									newMsg.msgId = trans->id;
-									newMsg.endOfMsg = MW_EOF;
-									newMsg.sizeOfData = 0;
-									newMsg.owner = -1;
-									for(it = trans->conList; it != NULL; it = it->next) {
-										mw_send(it->socket, &newMsg, sizeof(newMsg));
-									}
+									newMsg.owner = trans->owner;
+									newMsg.socket = -1;
 									globalMsg(MSG_PUSH, createNode(&newMsg));
 								}
-								else{
-									for(it = trans->conList; it != NULL; it = it->next){
-										if(it->socket == tmp->msg.socket){
-											it->socket = -1;
-											newMsg.msgType = MW_ACK;
-											newMsg.msgId = trans->id;
-											newMsg.owner = trans->owner;
-											newMsg.socket = -1;
-											globalMsg(MSG_PUSH, createNode(&newMsg));
-										}
-									}
-								}
 							}
-							break;
-					} //msgtype switch
-			} //unlock after here
-							globalMsg( MSG_UNLOCK, MSG_NO_ARG );
-					} /* end of while(1) */
-					return (void *) 0;
-			}
+						}
+					}
+					break;
+			} //msgtype switch
+		} //unlock after here
+		globalMsg( MSG_UNLOCK, MSG_NO_ARG );
+	} /* end of while(1) */
+	return (void *) 0;
+}
 
 /**
  * End of file
