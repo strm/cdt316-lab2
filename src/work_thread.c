@@ -394,3 +394,7 @@ void * worker_thread ( void * arg ){
 					} /* end of while(1) */
 					return (void *) 0;
 			}
+
+/**
+ * End of file
+ */
