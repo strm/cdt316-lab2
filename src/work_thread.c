@@ -113,6 +113,9 @@ void * worker_thread ( void * arg ){
 						}
 					}
 				}
+				else if(trans == NULL) {
+					continue;
+				}
 			}
 			switch(tmp->msg.msgType){
 				case MW_TRANSACTION:

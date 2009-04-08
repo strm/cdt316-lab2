@@ -20,6 +20,7 @@
 static char myname[TABLENAMELEN] = "";
 static int sin_port = -1;
 char DB_GLOBAL[ARG_SIZE];
+int DB_INSTANCE;
 
 void ParseAddress(char *ns_entry, struct sockaddr_in *hostInfo) {
 	char *conn_address;
@@ -33,13 +34,13 @@ void ParseAddress(char *ns_entry, struct sockaddr_in *hostInfo) {
 }
 
 int ConnectMiddleware(char *ns_entry_data, int csock, struct sockaddr_in *hostInfo) {
-	long REMOVETHIS = -10;
+	long db_instance = htonl(-DB_INSTANCE);
 	ParseAddress(ns_entry_data, hostInfo);
 	if(connect(csock, (struct sockaddr *)hostInfo, sizeof(struct sockaddr_in)) < 0) {
 		return MW_CONNECT_FAIL;
 	}
 	else {
-		send(csock, (void *)&REMOVETHIS, sizeof(long), 0);
+		send(csock, (void *)&db_instance, sizeof(long), 0);
 		return MW_CONNECT_SUCCESS;
 	}
 }
@@ -49,6 +50,8 @@ int SyncLogs() {
 	result = LogHandler(LOG_LAST_ID, 0, NULL, &last_id);
 	varList *list = NULL, *it;
 	message_t tmp_msg;
+
+	globalId(ID_CHANGE, last_id);
 
 	if(result > 0) 
 		debug_out(5, "Sync: Pre-commit log ahead, last id is %d\n", last_id);
@@ -60,16 +63,68 @@ int SyncLogs() {
 		debug_out(5, "Sync: There are transactions that have not been commited\n");
 		/* last_id - result = last id in post log */
 		last_id -= result;
-		while(1) {
+		LogHandler(LOG_GET_NEXT_PRE_ID, last_id, NULL, &next_id);
+		while(next_id != LOG_NO_ID) {
+			while(list) {
+				varListPop(&list);
+			}
+			LogHandler(LOG_READ_PRE, next_id, &list, &result);
+			last_id = next_id;
+
+			tmp_msg.sizeOfData = 0;
+			tmp_msg.msgType = MW_TRANSACTION;
+			tmp_msg.endOfMsg = 0;
+			tmp_msg.msgId = last_id;
+			tmp_msg.owner = MSG_PRE_LOG;
+
+			it = list;
+			while(it != NULL) {
+				for(tmp_msg.sizeOfData = 0; tmp_msg.sizeOfData < MSG_MAX_DATA; tmp_msg.sizeOfData++) {
+					if(it != NULL) {
+						tmp_msg.data[tmp_msg.sizeOfData] = it->data;
+						it = it->next;
+					}
+					else {
+						tmp_msg.endOfMsg = MW_EOF;
+						globalMsg(MSG_LOCK, MSG_NO_ARG);
+						globalMsg(MSG_PUSH, createNode(&tmp_msg));
+						globalMsg(MSG_UNLOCK, MSG_NO_ARG);
+						break;
+					}
+				}
+				if(tmp_msg.endOfMsg != MW_EOF) {
+					globalMsg(MSG_LOCK, MSG_NO_ARG);
+					globalMsg(MSG_PUSH, createNode(&tmp_msg));
+					globalMsg(MSG_UNLOCK, MSG_NO_ARG);
+					for(tmp_msg.sizeOfData = 0; tmp_msg.sizeOfData < MSG_MAX_DATA; tmp_msg.sizeOfData++) {
+						strncpy(tmp_msg.data[tmp_msg.sizeOfData].arg1, "\0", 1);
+						strncpy(tmp_msg.data[tmp_msg.sizeOfData].arg2, "\0", 1);
+						strncpy(tmp_msg.data[tmp_msg.sizeOfData].arg3, "\0", 1);
+						tmp_msg.data[tmp_msg.sizeOfData].op = NOCMD;
+					}
+				}
+			}
+
+			tmp_msg.msgType = MW_COMMIT;
+			tmp_msg.owner = MSG_PRE_LOG;
+			tmp_msg.socket = -1;
+			tmp_msg.msgId = last_id;
+			globalMsg(MSG_LOCK, MSG_NO_ARG);
+			globalMsg(MSG_PUSH, createNode(&tmp_msg));
+			globalMsg(MSG_UNLOCK, MSG_NO_ARG);
+			LogHandler(LOG_GET_NEXT_PRE_ID, next_id, NULL, &next_id);
+		}
+
+		/*while(1) {
 			LogHandler(LOG_GET_NEXT_PRE_ID, last_id, NULL, &next_id);
 			if(next_id == LOG_NO_ID)
-				break;
+			break;
 			debug_out(5, "prev_id: %d\t next_id: %d\n", last_id, next_id);
-			// Read next precommit entry
-			LogHandler(LOG_READ_PRE, next_id, &list, &result);
-			printf("Read transaction %d:\n", result);
+		// Read next precommit entry
+		LogHandler(LOG_READ_PRE, next_id, &list, &result);
+		printf("Read transaction %d:\n", result);
 
-			last_id = next_id;
+		last_id = next_id;
 		}
 		tmp_msg.sizeOfData = 0;
 		tmp_msg.msgType = MW_TRANSACTION;
@@ -78,25 +133,25 @@ int SyncLogs() {
 		tmp_msg.owner = MSG_PRE_LOG;
 
 		for(it = list; it != NULL; it = it->next) {
-			tmp_msg.data[tmp_msg.sizeOfData] = it->data;
-			printf("%d %s %s \n", it->data.op, it->data.arg1, it->data.arg2);
-			if(tmp_msg.sizeOfData == MSG_MAX_DATA) {
-				if(it->next == NULL) {
-					tmp_msg.endOfMsg = MW_EOF;
-				}
-				globalMsg(MSG_LOCK, MSG_NO_ARG);
-				globalMsg(MSG_PUSH, createNode(&tmp_msg));
-				globalMsg(MSG_UNLOCK, MSG_NO_ARG);
+		tmp_msg.data[tmp_msg.sizeOfData] = it->data;
+		printf("%d %s %s \n", it->data.op, it->data.arg1, it->data.arg2);
+		if(tmp_msg.sizeOfData == MSG_MAX_DATA - 1) {
+		if(it->next == NULL) {
+		tmp_msg.endOfMsg = MW_EOF;
+		}
+		globalMsg(MSG_LOCK, MSG_NO_ARG);
+		globalMsg(MSG_PUSH, createNode(&tmp_msg));
+		globalMsg(MSG_UNLOCK, MSG_NO_ARG);
 
-				tmp_msg.sizeOfData = 0;
-			}
-			tmp_msg.sizeOfData++;
+		tmp_msg.sizeOfData = -1;
+		}
+		tmp_msg.sizeOfData++;
 		}
 		if(tmp_msg.endOfMsg != MW_EOF) {
-			tmp_msg.endOfMsg = MW_EOF;
-			globalMsg(MSG_LOCK, MSG_NO_ARG);
-			globalMsg(MSG_PUSH, createNode(&tmp_msg));
-			globalMsg(MSG_UNLOCK, MSG_NO_ARG);
+		tmp_msg.endOfMsg = MW_EOF;
+		globalMsg(MSG_LOCK, MSG_NO_ARG);
+		globalMsg(MSG_PUSH, createNode(&tmp_msg));
+		globalMsg(MSG_UNLOCK, MSG_NO_ARG);
 		}
 		tmp_msg.msgType = MW_COMMIT;
 		tmp_msg.owner = -1;
@@ -104,14 +159,14 @@ int SyncLogs() {
 		tmp_msg.msgId = result;
 		globalMsg(MSG_LOCK, MSG_NO_ARG);
 		globalMsg(MSG_PUSH, createNode(&tmp_msg));
-		globalMsg(MSG_UNLOCK, MSG_NO_ARG);
+		globalMsg(MSG_UNLOCK, MSG_NO_ARG);*/
 	}
 	return 0;
 }
 
 int start_middleware(char *database) {
 	int sock;
-	int first_connect = 1;
+	int first_connect = 1, last_trans = -1;
 	char address[ARG_SIZE];
 	socklen_t reallen;
 	struct sockaddr_in real;
@@ -165,9 +220,10 @@ int start_middleware(char *database) {
 					if(ConnectMiddleware(entry_data_copy, conn_sock, &hostInfo) == MW_CONNECT_SUCCESS) {
 						debug_out(5, "Connected to %s (%s, %d)\n", ns_entry, ns_entry_data, conn_sock);
 						if(first_connect) {
+							LogHandler(LOG_LAST_ID, 0, NULL, &last_trans);
 							first_connect = 0;
 							tmp.msgType = MW_SYNCHRONIZE;
-							tmp.msgId = -1;
+							tmp.msgId = last_trans;
 							tmp.owner = 0;
 							tmp.socket = conn_sock;
 						}
@@ -311,8 +367,8 @@ int start_middleware(char *database) {
 			ns_miss_count++;
 		}
 	}
-	//if(!first_connect)
-		//mw_send(conn_sock, (void *)&tmp, sizeof(tmp));
+	if(!first_connect)
+		mw_send(conn_sock, (void *)&tmp, sizeof(tmp));
 	debug_out(3, "Returning from start_middleware\n");
 	return sock;
 }
@@ -349,7 +405,10 @@ int main(int argc, char *argv[]) {
 		exit(EXIT_FAILURE);
 	}
 
-	strncpy(DB_GLOBAL, argv[1], ARG_SIZE);
+	sscanf(argv[1], "%d", &DB_INSTANCE);
+	sprintf(DB_GLOBAL, "DATABASE%s", argv[1]);
+
+	printf("DB_GLOBAL: %s\nDB_INSTANCE: %d\n", DB_GLOBAL, DB_INSTANCE);
 
 	srand(time(NULL));
 	
@@ -382,6 +441,7 @@ int main(int argc, char *argv[]) {
 	}	
 */
 	pthread_join(work, NULL);
+	pthread_join(listenThread, NULL);
 	return 0;
 }
 

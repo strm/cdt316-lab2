@@ -6,6 +6,7 @@
 #include <string.h>
 #include <unistd.h>
 #include "../framework/cmd.h"
+#include "soups.h"
 
 #define ADD_TO_LIST				(1)
 #define REMOVE_BY_ADDR		(2)

@@ -12,12 +12,25 @@ void CreateConnectionInfo(connection *dest, int csock, char *addr, char conn_typ
 
 int ConnectionHandler(char cmd, connection *c, connection **clist, char *addr, int sock) {
 	static connection *list = NULL;
+	connection tmp;
 	int ret = 0;
 	connection *it;
 	
 	switch(cmd) {
 		case ADD_TO_LIST:
-			ret = AddConnection(&list, c);
+			if(GetConnectionByAddress(&list, &tmp, c->address) != 0 &&
+					strncmp(c->address, DB_GLOBAL, ARG_SIZE) != 0) {
+				ret = AddConnection(&list, c);
+				if(ret == 0)
+					printf("ConnectionHandler: Connection added to list\n");
+				else
+					printf("ConnectionHandler: Some semi unknown error occured\n");
+			}
+			else {
+				printf("CH: list-addr: %s\nCH: inc-addr: %s\n", tmp.address, c->address);
+				ret = -1;
+				printf("WERROR: THERE IS ALREADY A MW USING THAT DB!!\n");
+			}
 			break;
 		case REMOVE_BY_ADDR:
 			ret = RemoveConnectionByAddress(&list, addr);
@@ -162,10 +175,10 @@ int CopyList(connection *src, connection **dest) {
 	int ret = -1;
 
 	if(src == NULL||dest == NULL) {
-		if(src == NULL)
-			printf("Bad source for list copy\n");
+		if(src == NULL) {
+			DeleteConnectionList(dest);
+		}
 		else
-			printf("Bad destination for list copy\n");
 		return ret;
 	}
 

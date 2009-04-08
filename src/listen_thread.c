@@ -14,8 +14,8 @@
 int HandleMessage(message_t *msg, int from) {
 	int ret = 0;
 	node *newNode;
-	int i;
-	int next_id, result;
+	int i, id_diff;
+	int next_id, last_id, result;
 	varList *list = NULL, *it;
 	message_t tmp;
 
@@ -38,64 +38,78 @@ int HandleMessage(message_t *msg, int from) {
 			}
 			debug_out(4, "---\n");
 			msg->socket = from;
+			debug_out(4, "---\n");
 			newNode = createNode(msg);
-			globalMsg(MSG_LOCK, MSG_NO_ARG);
+			debug_out(4, "---\n");
+			//globalMsg(MSG_LOCK, MSG_NO_ARG);
+			debug_out(4, "---\n");
 			globalMsg(MSG_PUSH, newNode);
-			globalMsg(MSG_UNLOCK, MSG_NO_ARG);
+			debug_out(4, "---\n");
+			//globalMsg(MSG_UNLOCK, MSG_NO_ARG);
+			debug_out(4, "---\n");
 			break;
 		case MW_SYNCHRONIZE:
 			debug_out(5, "Got SYNCHRONIZE request from other middleware\n");
-			/*if(globalId(ID_CHECK, msg->msgId)) { // everything seems to be in order
+			id_diff = globalId(ID_DIFF, msg->msgId);
+			if(id_diff == 0) { // everything seems to be in order
 				debug_out(5, "According to globalId everything is fine\n");
 			}
-			else { // Sender seems to have missed something earlier*/
+			else if(id_diff < 0) { // Sender seems to have missed something earlier
 				debug_out(5, "According to globalId something needs to sync\n");
 				LogHandler(LOG_GET_NEXT_POST_ID, msg->msgId, NULL, &next_id);
 				while(next_id != LOG_NO_ID) {
-					debug_out(5, "Reading a helluvalot of log posts: %d\n", next_id);
+					while(list) {
+						varListPop(&list);
+					}
 					LogHandler(LOG_READ_POST, next_id, &list, &result);
 					debug_out(5, "Read a log post: %d\n", next_id);
-					LogHandler(LOG_GET_NEXT_POST_ID, next_id, NULL, &next_id);
-				}
-				debug_out(5, "Got out of while loop before seg fault\n");
+					last_id = next_id;
 
-				tmp.sizeOfData = 0;
-				tmp.msgType = MW_TRANSACTION;
-				tmp.endOfMsg = 0;
-				tmp.msgId = result;
-				tmp.owner = 0;
+					tmp.sizeOfData = 0;
+					tmp.msgType = MW_TRANSACTION;
+					tmp.endOfMsg = 0;
+					tmp.msgId = last_id;
+					tmp.owner = 0;
 
-				for(it = list; it != NULL; it = it->next) {
-					debug_out(5, "Looping varlist\n");
-					tmp.data[tmp.sizeOfData] = it->data;
-					if(tmp.sizeOfData == MSG_MAX_DATA) {
-						debug_out(5, "Max data reached for tmp\n");
-						/*if(it->next == NULL) {
-							debug_out(5, "There are no more messages\n");
-							tmp.endOfMsg = MW_EOF;
+					it = list;
+					while(it != NULL) {
+						for(tmp.sizeOfData = 0; tmp.sizeOfData < MSG_MAX_DATA; tmp.sizeOfData++) {
+							if(it != NULL) {
+								tmp.data[tmp.sizeOfData] = it->data;
+								it = it->next;
+							}
+							else {
+								tmp.endOfMsg = MW_EOF;
+								mw_send(from, (void *)&tmp, sizeof(tmp));
+								break;
+							}
 						}
-						else
-							debug_out(5, "There are more messages\n");*/
-						mw_send(from, (void *)&tmp, sizeof(tmp));
-						tmp.sizeOfData = 0;
+						if(tmp.endOfMsg != MW_EOF) {
+							mw_send(from, (void *)&tmp, sizeof(tmp));
+							for(tmp.sizeOfData = 0; tmp.sizeOfData < MSG_MAX_DATA; tmp.sizeOfData++) {
+								strncpy(tmp.data[tmp.sizeOfData].arg1, "\0", 1);
+								strncpy(tmp.data[tmp.sizeOfData].arg2, "\0", 1);
+								strncpy(tmp.data[tmp.sizeOfData].arg3, "\0", 1);
+								tmp.data[tmp.sizeOfData].op = NOCMD;
+							}
+						}
 					}
-					tmp.sizeOfData++;
-				}
-				debug_out(5, "Got out of forloop\n");
-				if(tmp.endOfMsg != MW_EOF) {
-					tmp.endOfMsg = MW_EOF;
-					mw_send(from, (void *)&tmp, sizeof(tmp));
-				}
 
-				tmp.msgType = MW_COMMIT;
-				tmp.owner = -1;
-				tmp.socket = -1;
-				tmp.msgId = result;
-				mw_send(from, (void *)&tmp, sizeof(tmp));
-			//}
+					tmp.msgType = MW_COMMIT;
+					tmp.owner = -1;
+					tmp.socket = -1;
+					tmp.msgId = last_id;
+					mw_send(from, (void *)&tmp, sizeof(tmp));
+					LogHandler(LOG_GET_NEXT_POST_ID, next_id, NULL, &next_id);
+					debug_out(6, "Iterating mw sync handling\n");
+				}
+				debug_out(6, "Leaving mw sync handling\n");
+			}
+			else { // We are out of sync
+			}
 			break;
 		case MW_CONNECT:
-			/* TODO: this is a reply from middleware we connected to, contains information about sequence number etc. */
+			//G_MAX_DATA-1
 			break;
 		case MW_DISCONNECT:
 			/* TODO: Add mutex to lock the connection list so no bad things might happen */
@@ -130,7 +144,7 @@ void *ListeningThread(void *arg) {
 	int i, nBytes, count, ret;
 	void * recvBuf;
 	long first_recv;
-	connection *connections;
+	connection *connections = NULL;
 	connection conn, *it;
 	int connectionSocket;
 	struct sockaddr connectInfo;
@@ -139,17 +153,19 @@ void *ListeningThread(void *arg) {
 	struct timeval selectTimeout;
 	node *tmp_msg = NULL;
 	message_t msg_data;
-	debug_out(5, "DB_GLOBAL: %s\n", DB_GLOBAL);
-
+	char connect_id[ARG_SIZE];
+	
 	debug_out(5, "Listenthread has started\n");
 
 	// The thread should wait for new messages when not processing something
 	while(1) {
 		count = 0;
-		selectTimeout.tv_sec = 0;
+		selectTimeout.tv_sec = 1;
 		selectTimeout.tv_usec = 50000;
 		FD_ZERO(&readFdSet);
 		FD_SET(listenSocket, &readFdSet);
+
+		connections = NULL;
 
 		ConnectionHandler(
 					COPY_LIST,
@@ -163,14 +179,10 @@ void *ListeningThread(void *arg) {
 		}
 		DeleteConnectionList(&connections);
 
-		//debug_out(3, "Entering selective state with %d connections\n", count);
+		debug_out(6, "Going into select with %d connections\n", count);
 		ret = select(FD_SETSIZE, &readFdSet, NULL, NULL, &selectTimeout);
 		if(ret < 0) {
-			perror("select: ");
-			//TODO: Add error handling here
-		}
-		else if(ret == 0) {
-			sleep(1);
+			perror("select");
 		}
 		else {
 			for(i = 0; i < FD_SETSIZE; i++) {
@@ -197,14 +209,14 @@ void *ListeningThread(void *arg) {
 									msg_data.sizeOfData = first_recv;
 									tmp_msg = createNode(&msg_data);
 									globalMsg(MSG_PUSH, tmp_msg);
-									debug_out(3, "Pushed shit on the queue\n");
 								}
 								else {
 									debug_out(3, "Middleware connection established\n");
+									sprintf(connect_id, "DATABASE%ld", -first_recv);
 									CreateConnectionInfo(
 											&conn,
 											connectionSocket,
-											"Unknown",
+											connect_id,
 											TYPE_MIDDLEWARE,
 											0);
 									if(ConnectionHandler(
@@ -214,6 +226,7 @@ void *ListeningThread(void *arg) {
 											NULL,
 											0) != 0) {
 										debug_out(3, "Could not add connection to list\n");
+										close(conn.socket);
 									}
 									// Middleware connection here
 								}
@@ -258,9 +271,9 @@ void *ListeningThread(void *arg) {
 								msg_data.socket = i;
 								msg_data.endOfMsg = 1;
 								msg_data.msgId = -75;
-								globalMsg(MSG_LOCK, MSG_NO_ARG);
+								//globalMsg(MSG_LOCK, MSG_NO_ARG);
 								globalMsg(MSG_PUSH, createNode(&msg_data));
-								globalMsg(MSG_UNLOCK, MSG_NO_ARG);
+								//globalMsg(MSG_UNLOCK, MSG_NO_ARG);
 							}
 							else {
 								debug_out(5, "Failed to remove interrupted connection\n");

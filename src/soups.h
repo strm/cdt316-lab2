@@ -9,13 +9,13 @@
 #define SOUPS_H
 
 #include <string.h>
-#include "trans.h"
+//#include "trans.h"
 #include "../framework/cmd.h"
 #include "../framework/middle-support.h"
 
 #define VAR_LEN		(255)
 #define VALUE_LEN	(768)
-#define MSG_MAX_DATA	(7)
+#define MSG_MAX_DATA	(8)
 #define MSG_ME		(-42)
 #define MSG_PRE_LOG	(-43)
 #define MSG_ALIVE	(-255)
@@ -34,6 +34,7 @@
 #define MW_SLEEP				(0)
 
 extern char DB_GLOBAL[ARG_SIZE];
+extern int DB_INSTANCE;
 
 typedef struct {
 	int msgType;
