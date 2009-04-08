@@ -24,7 +24,6 @@ int ParseTransaction(transNode ** trans){
 	//lock transaction
 	if(lockTransaction(*trans) == 0){
 		debug_out(6, "lockTransaction (failed)\n");
-		exit(1);
 		return LOCALPARSE_NO_LOCK;
 	}
 	//do localparse
@@ -66,6 +65,15 @@ void * worker_thread ( void * arg ){
 					debug_out(4, "transaction found\n");
 					trans = getTransaction(transList, tmp->msg.msgId);
 					debug_out(5, "getTransaction(%d)\n", trans->id);
+					if(tmp->msg.owner != MSG_ME && tmp->msg.msgType == MW_TRANSACTION && tmp->msg.socket != trans->socket){
+						debug_out(5, "error here\n");
+						newMsg.msgType = MW_NAK;
+						newMsg.msgId = tmp->msg.msgId;
+						newMsg.owner = tmp->msg.msgId+((rand()%5)+1);
+						mw_send(tmp->msg.socket, &newMsg, sizeof(message_t));
+						globalMsg(MSG_UNLOCK, MSG_NO_ARG);
+						continue;
+					}
 				}
 				else if(tmp->msg.msgType == MW_TRANSACTION){
 					//create new transaction
@@ -114,7 +122,7 @@ void * worker_thread ( void * arg ){
 						}
 					}
 				}
-				else if(trans == NULL) {
+				else{
 					globalMsg(MSG_UNLOCK, MSG_NO_ARG);
 					continue;
 				}
@@ -294,9 +302,9 @@ void * worker_thread ( void * arg ){
 						case MSG_ME:
 							//unlock
 							if(removeAll(trans->id)){
-
+								if(tmp->msg.owner != MSG_ME){
+								newMsg.msgId = trans->id;
 								newMsg.msgType = MW_NAK;
-								newMsg.msgId = tmp->msg.msgId;
 								newMsg.endOfMsg = MW_EOF;
 								newMsg.sizeOfData = 0;
 								newMsg.owner = MSG_ME;
@@ -305,13 +313,26 @@ void * worker_thread ( void * arg ){
 									if(it->socket != -1)
 										mw_send(it->socket, &newMsg, sizeof(newMsg));
 								}
+								}
 								//need to do this one again
 								cmd.op = -1;
 								for(cmd = varListPop(&(trans->parsed)); cmd.op != MAGIC; cmd = varListPop(&(trans->parsed)));
+								trans->parsed = NULL;
+
+								if(tmp->msg.owner == MSG_ME);
+								else if(tmp->msg.owner == -1);
+								else{
+								trans->id = tmp->msg.owner;
+								newMsg.msgId = trans->id;
+								globalId(ID_CHANGE, tmp->msg.owner);
+								debug_out(7, "\n\n\nCHANGED ID TO %d\n\n\n\n\n", trans->id);
+								}
+								newMsg.msgId = trans->id;
 								newMsg.msgType = MW_TRANSACTION;
 								newMsg.endOfMsg = MW_EOF;
-								newMsg.msgId = trans->id;
+								//newMsg.msgId = trans->id;
 
+							//removeTransaction(&transList, trans->id);
 								globalMsg(MSG_PUSH, createNode(&newMsg));
 							}
 							else
@@ -319,13 +340,13 @@ void * worker_thread ( void * arg ){
 							break;
 						default:
 							//throw out transaction
-							if(removeAll(trans->id));
-							else
-								debug_out(5, "removeAll (failed %d)\n", tmp->msg.msgId);
-							if(removeTransaction(&transList, trans->id));
-							else
-								debug_out(5, "removeTransaction (failed %d)\n", trans->id);
-							break;
+								if(removeAll(trans->id) );
+								else
+									debug_out(5, "removeAll (failed %d)\n", tmp->msg.msgId);
+								if(removeTransaction(&transList, trans->id));
+								else
+									debug_out(5, "removeTransaction (failed %d)\n", trans->id);
+								break;
 					}
 					break;
 				case MW_COMMIT:

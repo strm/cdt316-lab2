@@ -21,7 +21,13 @@ int HandleMessage(message_t *msg, int from) {
 
 	//if(globalId(ID_CHECK, msg->msgId)) {
 	if(msg->endOfMsg) ret = MW_EOF;
-
+	
+	if(globalId(ID_CHECK, msg->msgId) == 1 && msg->msgType != MW_TRANSACTION){
+		msg->msgType = MW_NAK;
+		msg->owner = msg->msgId+1;
+		mw_send(from, msg, sizeof(message_t));
+	}
+	else{
 	switch(msg->msgType) {
 		case MW_TRANSACTION:
 		case MW_COMMIT:
@@ -29,14 +35,7 @@ int HandleMessage(message_t *msg, int from) {
 		case MW_NAK:
 			// TODO: Check if we need to synchronize:
 			debug_out(4, "msgType: %d\n", msg->msgType);
-			for(i = 0; i < 8; i++) {
-				debug_out(4, "Got %d %s %s %s\n",
-						msg->data[i].op,
-						msg->data[i].arg1,
-						msg->data[i].arg2,
-						msg->data[i].arg3);
-			}
-			debug_out(4, "---\n");
+			
 			msg->socket = from;
 			newNode = createNode(msg);
 			globalMsg(MSG_LOCK, MSG_NO_ARG);
@@ -117,6 +116,7 @@ int HandleMessage(message_t *msg, int from) {
 					from);
 			close(from);
 			break;
+	}
 	}
 	//}
 	/*else { // The message id was lower then we expected

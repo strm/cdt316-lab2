@@ -13,8 +13,8 @@
   (e.g. #define NAMESERVER "lab6-4.idt.mdh.se")
   See README file for more details.
  ---------------------------------------------------*/
-#define NAMESERVER "localhost"
 
+#define NAMESERVER "ita05973.u2-034.cam-student.mdh.se"
 
 #endif
 #endif

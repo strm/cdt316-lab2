@@ -29,6 +29,7 @@ int getUsedVariables(varList ** var, varList * trans){
 					strcpy(tmp.arg1, trans->data.arg1);
 					varListPush(tmp, var);
 					strcpy(tmp.arg1, "\0");
+					debug_out(5, "match found: %s\n", trans->data.arg1);
 				}
 			if(is_entry(trans->data.arg2))
 				if(!varListFind(trans->data.arg2, (*var))){
@@ -37,6 +38,7 @@ int getUsedVariables(varList ** var, varList * trans){
 					strcpy(tmp.arg1, trans->data.arg2);
 					varListPush(tmp, var);
 					strcpy(tmp.arg1, "\0");
+					debug_out(5, "match found: %s\n", trans->data.arg2);
 				}
 			if(is_entry(trans->data.arg3))
 				if(!varListFind(trans->data.arg3, (*var))){
@@ -45,6 +47,7 @@ int getUsedVariables(varList ** var, varList * trans){
 					strcpy(tmp.arg1, trans->data.arg3);
 					varListPush(tmp, var);
 					strcpy(tmp.arg1, "\0");
+					debug_out(5, "match found: %s\n", trans->data.arg3);
 				}
 		}
 		trans = trans->next;
@@ -76,7 +79,7 @@ int getFromDB(varList ** var){
 			else{
 				//sucess
 				debug_out(4, "Retrived { %s } for %s", ret, iter->data.arg1);
-				strcpy(iter->data.arg2, "");
+				strcpy(iter->data.arg2, ret);
 				strncpy(ret, "", ARG_SIZE);
 			}
 		}
@@ -104,6 +107,7 @@ int localParse(varList ** var, varList * trans){
 						//assign value of another post to a post
 						//arg1 = arg2
 						value = varListGetValue((*var), tmp.arg2);
+						debug_out(5, "value = %s", value);
 						if( value != NULL ){
 							if(varListSetValue(var, tmp.arg1, value))
 								printf("ASSIGN %s %s (DONE)\n", tmp.arg1, value);
@@ -131,6 +135,7 @@ int localParse(varList ** var, varList * trans){
 					//X value
 					if( is_entry(tmp.arg2) && varListFind(tmp.arg2, (*var)) ){
 						value = varListGetValue((*var), tmp.arg2);
+						debug_out(5, "value = %s", value);
 						if(value != NULL){
 							xValue = atoi(value);
 						}
@@ -176,6 +181,10 @@ int localParse(varList ** var, varList * trans){
 				break;
 			case PRINT:
 				//nothing to see here move along
+				if(is_entry(tmp.arg1)){
+						value = varListGetValue((*var), tmp.arg1);
+						strcpy(iter->data.arg1, value);
+				}
 				break;
 			case DELETE:
 				if( is_entry(tmp.arg1) && varListFind(tmp.arg1, (*var)) ){
