@@ -14,8 +14,8 @@
 #define NS_VERIFICATION_DELAY	(NS_SLEEP_DELAY * 2)
 #define MAX_CONNECT_ATTEMPTS	(3)
 
-#define MW_CONNECT_SUCCESS	(1)
-#define MW_CONNECT_FAIL		(0)
+//#define MW_CONNECT_SUCCESS	(1)
+#define MW_CONNECT_FAIL		(-1)
 
 static char myname[TABLENAMELEN] = "";
 static int sin_port = -1;
@@ -34,14 +34,34 @@ void ParseAddress(char *ns_entry, struct sockaddr_in *hostInfo) {
 }
 
 int ConnectMiddleware(char *ns_entry_data, int csock, struct sockaddr_in *hostInfo) {
-	long db_instance = htonl(-DB_INSTANCE);
+	long db_instance = htonl(-DB_INSTANCE), conn_db_instance;
+	fd_set recvSet;
+	struct timeval sel_timeout;
+	int sel_return;
+
 	ParseAddress(ns_entry_data, hostInfo);
 	if(connect(csock, (struct sockaddr *)hostInfo, sizeof(struct sockaddr_in)) < 0) {
 		return MW_CONNECT_FAIL;
 	}
 	else {
+		FD_ZERO(&recvSet);
+		FD_SET(csock, &recvSet);
+		sel_timeout.tv_sec = 5;
+		sel_timeout.tv_usec = 0;
+
 		send(csock, (void *)&db_instance, sizeof(long), 0);
-		return MW_CONNECT_SUCCESS;
+		sel_return = select(FD_SETSIZE, &recvSet, NULL, NULL, &sel_timeout);
+		if(sel_return > 0) {
+			debug_out(6, "CMW: Select returned\n");
+			recv(csock, (void *)&conn_db_instance, sizeof(long), 0);
+			conn_db_instance = -ntohl(conn_db_instance);
+			return conn_db_instance;
+		}
+		else {
+			debug_out(10, "CMW: Select failed\n");
+			close(csock);
+			return MW_CONNECT_FAIL;
+		}
 	}
 }
 
@@ -166,7 +186,8 @@ int SyncLogs() {
 
 int start_middleware(char *database) {
 	int sock;
-	int first_connect = 1, last_trans = -1;
+	long conn_db_instance;
+	int last_trans = -1;
 	char address[ARG_SIZE];
 	socklen_t reallen;
 	struct sockaddr_in real;
@@ -176,11 +197,13 @@ int start_middleware(char *database) {
 	char ns_entry[TABLENAMELEN];
 	char ns_entry_data[ARG_SIZE];
 	char entry_data_copy[ARG_SIZE];
+	char conn_ident[ARG_SIZE];
 	int conn_sock;
 	int conn_retries;
 	struct sockaddr_in hostInfo;
 	connection conn;
 	message_t tmp;
+	pthread_t listenThread;
 
 	if (myname[0] != '\0') {
 		debug_out(2, "Already registered!\n");
@@ -206,6 +229,13 @@ int start_middleware(char *database) {
 		exit(1);
 	}
 
+	pthread_create(&listenThread, NULL, ListeningThread, (void *)&sock);
+	
+	LogHandler(LOG_LAST_ID, 0, NULL, &last_trans);
+	tmp.msgType = MW_SYNCHRONIZE;
+	tmp.msgId = last_trans;
+	tmp.owner = 0;
+
 	sin_port = ntohs(real.sin_port);
 
 	for(ns_miss_count = 0, ns_iterator = 0; ns_miss_count < NS_LOOKUP_ATTEMPTS; ns_iterator++) {
@@ -217,28 +247,25 @@ int start_middleware(char *database) {
 				if(get_entry(ns_entry_data, "nameserver", ns_entry)) {
 					strncpy(entry_data_copy, ns_entry_data, ARG_SIZE);
 					debug_out(3, "Trying to connect to '%s'\n", ns_entry_data);
-					if(ConnectMiddleware(entry_data_copy, conn_sock, &hostInfo) == MW_CONNECT_SUCCESS) {
+					if((conn_db_instance = ConnectMiddleware(entry_data_copy, conn_sock, &hostInfo)) >= 0) {
 						debug_out(5, "Connected to %s (%s, %d)\n", ns_entry, ns_entry_data, conn_sock);
-						if(first_connect) {
-							LogHandler(LOG_LAST_ID, 0, NULL, &last_trans);
+						/*if(first_connect) {
 							first_connect = 0;
-							tmp.msgType = MW_SYNCHRONIZE;
-							tmp.msgId = last_trans;
-							tmp.owner = 0;
-							tmp.socket = conn_sock;
-						}
+						}*/
+						sprintf(conn_ident, "DATABASE%ld", conn_db_instance);
 						CreateConnectionInfo(
 								&conn,
 								conn_sock,
-								ns_entry_data,
+								conn_ident,
 								TYPE_MIDDLEWARE,
 								0);
-						ConnectionHandler(
+						if(ConnectionHandler(
 								ADD_TO_LIST,
 								&conn,
 								NULL,
 								NULL,
-								0);
+								0) == 0)
+									tmp.socket = conn.socket;
 						break;
 					}
 					else {
@@ -265,48 +292,54 @@ int start_middleware(char *database) {
 						if(strncmp(address, ns_entry_data, ARG_SIZE) != 0) {
 							mw_instance = -1;
 							strncpy(entry_data_copy, ns_entry_data, ARG_SIZE);
-							if(ConnectMiddleware(entry_data_copy, conn_sock, &hostInfo) == MW_CONNECT_SUCCESS) {
+							if((conn_db_instance = ConnectMiddleware(entry_data_copy, conn_sock, &hostInfo)) >= 0) {
+								//if(ConnectMiddleware(entry_data_copy, conn_sock, &hostInfo) == MW_CONNECT_SUCCESS) {
 								debug_out(5, "Verification failed - Connected to %s (%s)\n", ns_entry, ns_entry_data);
-						CreateConnectionInfo(
-								&conn,
-								conn_sock,
-								ns_entry_data,
-								TYPE_MIDDLEWARE,
-								0);
-						ConnectionHandler(
-								ADD_TO_LIST,
-								&conn,
-								NULL,
-								NULL,
-								0);
+								sprintf(conn_ident, "DATABASE%ld", conn_db_instance);
+								CreateConnectionInfo(
+										&conn,
+										conn_sock,
+										conn_ident,
+										TYPE_MIDDLEWARE,
+										0);
+								if(ConnectionHandler(
+										ADD_TO_LIST,
+										&conn,
+										NULL,
+										NULL,
+										0) == 0)
+									tmp.socket = conn.socket;
 							}
 							// Another middleware stole our entry and disappeared, ignore the slot and let
 							// someone else take it later
 							else {
 								debug_out(5, "Verification failed - Could not connect to %s (%s)\n",ns_entry, ns_entry_data);
 							}
+							}
 						}
 					}
-				}
 				else {
 					debug_out(5, "Invalid nameserver entry found, waiting for delete confirmation\n");
 					sleep(NS_VERIFICATION_DELAY);
 					if(get_entry(ns_entry_data, "nameserver", ns_entry)) {
 						strncpy(entry_data_copy, ns_entry_data, ARG_SIZE);
-						if(ConnectMiddleware(entry_data_copy, conn_sock, &hostInfo) == MW_CONNECT_SUCCESS) {
+						if((conn_db_instance = ConnectMiddleware(entry_data_copy, conn_sock, &hostInfo)) >= 0) {
+						//if(ConnectMiddleware(entry_data_copy, conn_sock, &hostInfo) == MW_CONNECT_SUCCESS) {
 							debug_out(5, "Entry rectified - Connected to %s (%s)\n", ns_entry, ns_entry_data);
+						sprintf(conn_ident, "DATABASE%ld", conn_db_instance);
 						CreateConnectionInfo(
 								&conn,
 								conn_sock,
-								ns_entry_data,
+								conn_ident,
 								TYPE_MIDDLEWARE,
 								0);
-						ConnectionHandler(
+						if(ConnectionHandler(
 								ADD_TO_LIST,
 								&conn,
 								NULL,
 								NULL,
-								0);
+								0) == 0)
+									tmp.socket = conn.socket;
 						}
 						else {
 							if(!delete_entry("nameserver", ns_entry))
@@ -335,20 +368,23 @@ int start_middleware(char *database) {
 				if(strncmp(address, ns_entry_data, ARG_SIZE) != 0) {
 					mw_instance = -1;
 					strncpy(entry_data_copy, ns_entry_data, ARG_SIZE);
-					if(ConnectMiddleware(entry_data_copy, conn_sock, &hostInfo) == MW_CONNECT_SUCCESS) {
+					if((conn_db_instance = ConnectMiddleware(entry_data_copy, conn_sock, &hostInfo)) >= 0) {
+					//if(ConnectMiddleware(entry_data_copy, conn_sock, &hostInfo) == MW_CONNECT_SUCCESS) {
 						debug_out(5, "Verification failed - Connected to %s (%s)\n", ns_entry, ns_entry_data);
+						sprintf(conn_ident, "DATABASE%ld", conn_db_instance);
 						CreateConnectionInfo(
 								&conn,
 								conn_sock,
-								ns_entry_data,
+								conn_ident,
 								TYPE_MIDDLEWARE,
 								0);
-						ConnectionHandler(
+						if(ConnectionHandler(
 								ADD_TO_LIST,
 								&conn,
 								NULL,
 								NULL,
-								0);
+								0) == 0)
+									tmp.socket = conn.socket;
 					}
 					// Another middleware stole our entry and disappeared, ignore the slot and let
 					// someone else take it later
@@ -367,8 +403,8 @@ int start_middleware(char *database) {
 			ns_miss_count++;
 		}
 	}
-	if(!first_connect)
-		mw_send(conn_sock, (void *)&tmp, sizeof(tmp));
+	
+	mw_send(tmp.socket, (void *)&tmp, sizeof(tmp));
 	debug_out(3, "Returning from start_middleware\n");
 	return sock;
 }
@@ -391,13 +427,9 @@ void stop_middleware(int sock) {
 }
 
 int main(int argc, char *argv[]) {
-	//int i;
-	//long msg;
 	int mw_sock;
-	//connection c;
-	pthread_t listenThread;
+	//pthread_t listenThread;
 	pthread_t work;
-	//pthread_t alive;
 
 	if(argc < 2) {
 		fprintf(stderr, "Insufficient parameters for %s\n", argv[0]);
@@ -417,7 +449,7 @@ int main(int argc, char *argv[]) {
 	
 	mw_sock = start_middleware("MIDDLEWARE");
 	debug_out(2, "Middleware initialized, starting listening thread\n");
-	pthread_create(&listenThread, NULL, ListeningThread, (void *)&mw_sock);
+	//pthread_create(&listenThread, NULL, ListeningThread, (void *)&mw_sock);
 	pthread_create(&work, NULL, worker_thread, ( void * ) &mw_sock);
 /*	while(1) {
 		for(i = 0; i < 20; i++) {
@@ -441,7 +473,7 @@ int main(int argc, char *argv[]) {
 	}	
 */
 	pthread_join(work, NULL);
-	pthread_join(listenThread, NULL);
+	//pthread_join(listenThread, NULL);
 	return 0;
 }
 

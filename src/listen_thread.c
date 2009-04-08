@@ -38,15 +38,10 @@ int HandleMessage(message_t *msg, int from) {
 			}
 			debug_out(4, "---\n");
 			msg->socket = from;
-			debug_out(4, "---\n");
 			newNode = createNode(msg);
-			debug_out(4, "---\n");
-			//globalMsg(MSG_LOCK, MSG_NO_ARG);
-			debug_out(4, "---\n");
+			globalMsg(MSG_LOCK, MSG_NO_ARG);
 			globalMsg(MSG_PUSH, newNode);
-			debug_out(4, "---\n");
-			//globalMsg(MSG_UNLOCK, MSG_NO_ARG);
-			debug_out(4, "---\n");
+			globalMsg(MSG_UNLOCK, MSG_NO_ARG);
 			break;
 		case MW_SYNCHRONIZE:
 			debug_out(5, "Got SYNCHRONIZE request from other middleware\n");
@@ -143,7 +138,7 @@ void *ListeningThread(void *arg) {
 	fd_set readFdSet; /* Used by select */
 	int i, nBytes, count, ret;
 	void * recvBuf;
-	long first_recv;
+	long first_recv, db_instance = htonl(-DB_INSTANCE);
 	connection *connections = NULL;
 	connection conn, *it;
 	int connectionSocket;
@@ -179,7 +174,7 @@ void *ListeningThread(void *arg) {
 		}
 		DeleteConnectionList(&connections);
 
-		debug_out(6, "Going into select with %d connections\n", count);
+		//debug_out(6, "Going into select with %d connections\n", count);
 		ret = select(FD_SETSIZE, &readFdSet, NULL, NULL, &selectTimeout);
 		if(ret < 0) {
 			perror("select");
@@ -208,11 +203,14 @@ void *ListeningThread(void *arg) {
 									msg_data.socket = connectionSocket;
 									msg_data.sizeOfData = first_recv;
 									tmp_msg = createNode(&msg_data);
+									globalMsg(MSG_LOCK, MSG_NO_ARG);
 									globalMsg(MSG_PUSH, tmp_msg);
+									globalMsg(MSG_UNLOCK, MSG_NO_ARG);
 								}
 								else {
 									debug_out(3, "Middleware connection established\n");
 									sprintf(connect_id, "DATABASE%ld", -first_recv);
+									send(connectionSocket, (void *)&db_instance, sizeof(long), 0);
 									CreateConnectionInfo(
 											&conn,
 											connectionSocket,
@@ -271,9 +269,9 @@ void *ListeningThread(void *arg) {
 								msg_data.socket = i;
 								msg_data.endOfMsg = 1;
 								msg_data.msgId = -75;
-								//globalMsg(MSG_LOCK, MSG_NO_ARG);
+								globalMsg(MSG_LOCK, MSG_NO_ARG);
 								globalMsg(MSG_PUSH, createNode(&msg_data));
-								//globalMsg(MSG_UNLOCK, MSG_NO_ARG);
+								globalMsg(MSG_UNLOCK, MSG_NO_ARG);
 							}
 							else {
 								debug_out(5, "Failed to remove interrupted connection\n");

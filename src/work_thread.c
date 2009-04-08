@@ -114,6 +114,7 @@ void * worker_thread ( void * arg ){
 					}
 				}
 				else if(trans == NULL) {
+					globalMsg(MSG_UNLOCK, MSG_NO_ARG);
 					continue;
 				}
 			}

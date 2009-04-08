@@ -21,8 +21,9 @@ int ConnectionHandler(char cmd, connection *c, connection **clist, char *addr, i
 			if(GetConnectionByAddress(&list, &tmp, c->address) != 0 &&
 					strncmp(c->address, DB_GLOBAL, ARG_SIZE) != 0) {
 				ret = AddConnection(&list, c);
-				if(ret == 0)
+				if(ret == 0) {
 					printf("ConnectionHandler: Connection added to list\n");
+				}
 				else
 					printf("ConnectionHandler: Some semi unknown error occured\n");
 			}
