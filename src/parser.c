@@ -283,13 +283,16 @@ int sendResponse(transNode * trans){
 				nRsp++;
 			iter = iter->next; 
 		}
-		if(nRsp > 0){
+		if(nRsp >= 0){
 			/**
 			 * Send amount of responses to client
 			 */
 			nRsp = htonl(nRsp);
 			if(send(trans->socket, &nRsp, sizeof(int), MSG_NOSIGNAL) == -1){
 				debug_out(5, "send to client (failed)\n");
+				return 0;
+			}
+			else if(nRsp == 0) {
 				return 0;
 			}
 			else{

@@ -71,7 +71,8 @@ int SyncLogs() {
 	varList *list = NULL, *it;
 	message_t tmp_msg;
 
-	globalId(ID_CHANGE, last_id);
+	if(last_id != -1)
+		globalId(ID_CHANGE, last_id);
 
 	if(result > 0) 
 		debug_out(5, "Sync: Pre-commit log ahead, last id is %d\n", last_id);
