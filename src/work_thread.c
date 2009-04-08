@@ -65,6 +65,7 @@ void * worker_thread ( void * arg ){
 					debug_out(4, "transaction found\n");
 					trans = getTransaction(transList, tmp->msg.msgId);
 					debug_out(5, "getTransaction(%d)\n", trans->id);
+					/*
 					if(tmp->msg.owner != MSG_ME && tmp->msg.msgType == MW_TRANSACTION && tmp->msg.socket != trans->socket){
 						debug_out(5, "error here\n");
 						newMsg.msgType = MW_NAK;
@@ -73,7 +74,7 @@ void * worker_thread ( void * arg ){
 						mw_send(tmp->msg.socket, &newMsg, sizeof(message_t));
 						globalMsg(MSG_UNLOCK, MSG_NO_ARG);
 						continue;
-					}
+					}*/
 				}
 				else if(tmp->msg.msgType == MW_TRANSACTION){
 					//create new transaction
@@ -302,7 +303,6 @@ void * worker_thread ( void * arg ){
 						case MSG_ME:
 							//unlock
 							if(removeAll(trans->id)){
-								if(tmp->msg.owner != MSG_ME){
 								newMsg.msgId = trans->id;
 								newMsg.msgType = MW_NAK;
 								newMsg.endOfMsg = MW_EOF;
@@ -313,26 +313,18 @@ void * worker_thread ( void * arg ){
 									if(it->socket != -1)
 										mw_send(it->socket, &newMsg, sizeof(newMsg));
 								}
-								}
+								debug_out(5, "\n\n\n\n\nnot doing transaction\n\n\n\n\n");
+								removeTransaction(&transList, trans->id);
+								break;
 								//need to do this one again
 								cmd.op = -1;
 								for(cmd = varListPop(&(trans->parsed)); cmd.op != MAGIC; cmd = varListPop(&(trans->parsed)));
 								trans->parsed = NULL;
-
-								if(tmp->msg.owner == MSG_ME);
-								else if(tmp->msg.owner == -1);
-								else{
-								trans->id = tmp->msg.owner;
 								newMsg.msgId = trans->id;
-								globalId(ID_CHANGE, tmp->msg.owner);
-								debug_out(7, "\n\n\nCHANGED ID TO %d\n\n\n\n\n", trans->id);
-								}
-								newMsg.msgId = trans->id;
+								newMsg.owner = MSG_ME;
 								newMsg.msgType = MW_TRANSACTION;
 								newMsg.endOfMsg = MW_EOF;
-								//newMsg.msgId = trans->id;
 
-							//removeTransaction(&transList, trans->id);
 								globalMsg(MSG_PUSH, createNode(&newMsg));
 							}
 							else
