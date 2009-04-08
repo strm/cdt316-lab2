@@ -24,6 +24,7 @@ int ParseTransaction(transNode ** trans){
 	//lock transaction
 	if(lockTransaction(*trans) == 0){
 		debug_out(6, "lockTransaction (failed)\n");
+		exit(1);
 		return LOCALPARSE_NO_LOCK;
 	}
 	//do localparse
@@ -344,6 +345,7 @@ void * worker_thread ( void * arg ){
 							else
 								debug_out(4, "Done with remote transaction\n");
 							//remove transaction since its done
+						}
 							if(removeAll(trans->id))
 								debug_out(5, "Lock removed for %d\n", trans->id);
 							else
@@ -352,9 +354,6 @@ void * worker_thread ( void * arg ){
 								debug_out(5, "Transaction removed %d\n", tmp->msg.msgId);
 							else
 								debug_out(5, "removeTransaction (failed) (commit)\n", tmp->msg.msgId);
-						}
-						else
-							debug_out(4, "Failed to send response to client\n");
 					}
 					else
 						debug_out(5, "commitParse(failed)\n");

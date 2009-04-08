@@ -17,10 +17,10 @@
 int getUsedVariables(varList ** var, varList * trans){
 	int ret = 0;
 	command tmp;	
-	printf("getUSedVariables started\n");
+	debug_out(3, "getUSedVariables started\n");
 	while ( trans != NULL ){
 		//check all args
-		printf("data.op = %d arg1 = %s\n", trans->data.op, trans->data.arg1);
+		debug_out(3, "data.op = %d arg1 = %s\n", trans->data.op, trans->data.arg1);
 		if(trans->data.op <= 6){
 			if(is_entry(trans->data.arg1))
 				if(!varListFind(trans->data.arg1, (*var))){
@@ -68,7 +68,7 @@ int getFromDB(varList ** var){
 			debug_out(3, "%s %s\n", iter->data.arg1, ret);
 			if(get_entry(ret, DB_GLOBAL, iter->data.arg1) == FALSE){
 				debug_out(4, "No value retrived for %s\n", iter->data.arg1);
-				strncpy(ret, "", ARG_SIZE);
+				strncpy(ret, " ", ARG_SIZE);
 				strncpy(iter->data.arg2, ret, ARG_SIZE);
 				debug_out(3,"\n\n%s\n",iter->data.arg2);
 				nRet--;
@@ -80,7 +80,6 @@ int getFromDB(varList ** var){
 				strncpy(ret, "", ARG_SIZE);
 			}
 		}
-		//free(ret);
 		iter = iter->next;
 	}
 	return nRet;
@@ -92,7 +91,7 @@ int getFromDB(varList ** var){
 int localParse(varList ** var, varList * trans){
 	varList * iter = trans;
 	command tmp;
-	char * value;
+	char * value = (char *) malloc(sizeof(char)*ARG_SIZE);
 	int xValue, yValue, result;
 	printf("\nBegin local parse\n");
 	getFromDB(var);
@@ -126,7 +125,8 @@ int localParse(varList ** var, varList * trans){
 				else
 					printf("ASSIGN %s ? (FAIL)\n", tmp.arg1);
 				break;
-			case 2: //ADD <OUT> = <IN> + <IN>
+			case 2: 
+				debug_out(4, "//ADD <OUT> = <IN> + <IN>\n");
 				if( is_entry(tmp.arg1) && varListFind(tmp.arg1, (*var)) ){
 					//X value
 					if( is_entry(tmp.arg2) && varListFind(tmp.arg2, (*var)) ){
@@ -140,6 +140,7 @@ int localParse(varList ** var, varList * trans){
 						}
 					}
 					else{
+						debug_out(4, "x = atoi\n");
 						xValue = atoi(tmp.arg2);
 					}
 					//y value
@@ -154,14 +155,16 @@ int localParse(varList ** var, varList * trans){
 						}
 					}
 					else{
+						debug_out(4, "y = atoi\n");
 						yValue = atoi(tmp.arg3);
 					}
 
-					//do math
+					debug_out(4, "do math\n");
 					result = xValue + yValue;
 					//do itoa(fake) and assing to tmp.arg1
 					sprintf(value, "%d", result);
 					//assign value
+					debug_out(4, "ADD value to list\n");
 					if(varListSetValue(var, tmp.arg1, value))
 						printf("ADD %s %s %s (DONE)\n", tmp.arg1, tmp.arg2, tmp.arg3);
 					else

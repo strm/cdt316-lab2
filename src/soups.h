@@ -31,7 +31,7 @@
 #define MW_EOF						(7)
 #define MW_ALIVE					(-888)
 
-#define MW_SLEEP				(0)
+#define MW_SLEEP				(5)
 
 extern char DB_GLOBAL[ARG_SIZE];
 extern int DB_INSTANCE;

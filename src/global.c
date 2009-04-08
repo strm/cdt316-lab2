@@ -17,7 +17,7 @@ uint64_t globalId ( int cmd, int arg ) {
 	uint64_t ret;
 	switch (cmd){
 		case ID_GET:
-			ret = (_id++);
+			ret = (++_id);
 			break;
 		case ID_CHECK:
 				ret = arg - _id;
