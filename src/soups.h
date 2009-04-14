@@ -47,6 +47,5 @@ typedef struct {
 	command data[MSG_MAX_DATA];
 } message_t;
 
-void * aliveThread(void * arg);
 
 #endif
