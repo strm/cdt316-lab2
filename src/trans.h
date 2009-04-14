@@ -7,7 +7,6 @@
 #define TRANS_H
 
 #include <stdlib.h>
-#include "log.h"
 #include "soups.h"
 #include "../framework/cmd.h"
 #include "../framework/middle-support.h"
