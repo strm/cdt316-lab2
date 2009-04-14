@@ -48,10 +48,8 @@ void * worker_thread ( void * arg ){
 	varList *iter;
 	command cmd;
 	debug_out(5,"Welcome to worker_thread\n");
+	srand(time(atoi(DB_GLOBAL)));
 	while(1){
-		/*
-		 * Read message queue
-		 */
 		if ( globalMsg( MSG_LOCK, MSG_NO_ARG ) == NULL ){
 			//lockedi
 			tmp = globalMsg( MSG_POP, MSG_NO_ARG );
@@ -60,23 +58,38 @@ void * worker_thread ( void * arg ){
 				continue;
 			}
 			else{
+				if(tmp->msg.nMiddlewares > 0){
+					tmp->msg.nMiddlewares--;
+					globalMsg(MSG_PUSH, tmp);
+					globalMsg(MSG_UNLOCK, MSG_NO_ARG);
+					sleep((tmp->msg.nMiddlewares/2));
+					debug_out(5, "\n\n\n\n%d \n\n\n\n", tmp->msg.nMiddlewares);
+					continue;
+				}
 				debug_out(5, "Message recived %d %d %d\n", tmp->msg.msgType, tmp->msg.msgId, tmp->msg.owner);
 				if(isTransaction(transList, tmp->msg.msgId)){
 					debug_out(4, "transaction found\n");
 					trans = getTransaction(transList, tmp->msg.msgId);
 					debug_out(5, "getTransaction(%d)\n", trans->id);
-					/*
-					if(tmp->msg.owner != MSG_ME && tmp->msg.msgType == MW_TRANSACTION && tmp->msg.socket != trans->socket){
+
+					if(tmp->msg.owner != tmp->msg.owner && tmp->msg.msgType == MW_TRANSACTION && tmp->msg.socket != trans->socket){
 						debug_out(5, "error here\n");
 						newMsg.msgType = MW_NAK;
 						newMsg.msgId = tmp->msg.msgId;
-						newMsg.owner = tmp->msg.msgId+((rand()%5)+1);
+						newMsg.owner = tmp->msg.msgId+(rand()%5+1);
 						mw_send(tmp->msg.socket, &newMsg, sizeof(message_t));
 						globalMsg(MSG_UNLOCK, MSG_NO_ARG);
 						continue;
-					}*/
+					}
 				}
 				else if(tmp->msg.msgType == MW_TRANSACTION){
+					//fix for simulataneus transactions
+					if(tmp->msg.nMiddlewares != 0){
+						tmp->msg.nMiddlewares = (rand()%5+1);
+						globalMsg(MSG_PUSH, tmp);
+						globalMsg(MSG_UNLOCK, MSG_NO_ARG);
+						continue;
+					}
 					//create new transaction
 					debug_out(4, "creating new transaction\n");
 					if(tmp->msg.owner == MSG_ME)
@@ -177,7 +190,7 @@ void * worker_thread ( void * arg ){
 										}
 										debug_out(5, "Local Parse(DONE) sleeping for 5sec\n");
 										sleep(MW_SLEEP);
-									break;
+										break;
 									case LOCALPARSE_FAILED:
 										//unrecoverable error
 										debug_out(5, "Failed to parse transaction from client\n");
@@ -190,6 +203,8 @@ void * worker_thread ( void * arg ){
 										/* TODO
 										 * Send Response to client
 										 */
+										res = 0;
+										mw_send(trans->socket, &res, sizeof(long));
 										break;
 									case LOCALPARSE_NO_LOCK:
 										//empty parsed list
@@ -313,14 +328,27 @@ void * worker_thread ( void * arg ){
 									if(it->socket != -1)
 										mw_send(it->socket, &newMsg, sizeof(newMsg));
 								}
-								debug_out(5, "\n\n\n\n\nnot doing transaction\n\n\n\n\n");
-								removeTransaction(&transList, trans->id);
-								break;
+								//debug_out(5, "\n\n\n\n\nnot doing transaction\n\n\n\n\n");
+								//removeTransaction(&transList, trans->id);
+								//break;
 								//need to do this one again
 								cmd.op = -1;
 								for(cmd = varListPop(&(trans->parsed)); cmd.op != MAGIC; cmd = varListPop(&(trans->parsed)));
 								trans->parsed = NULL;
-								newMsg.msgId = trans->id;
+								if(tmp->msg.owner == MSG_ME || tmp->msg.owner == -1)
+									newMsg.msgId = trans->id;
+								else{
+									trans = popTransaction(&transList, trans->id, trans->socket);
+									if(trans == NULL){
+										debug_out(4, "\nBig error popTransaction\n");
+									}
+									trans->id = tmp->msg.owner;
+									newMsg.msgId = tmp->msg.owner;
+									newMsg.nMiddlewares = (rand()%5+1);
+
+									debug_out(5, "\n\n\n\n\n Are where there yet? \n %d\n%d\n\n\n", trans->id, tmp->msg.owner);
+									addTransaction(&transList, trans);
+								}
 								newMsg.owner = MSG_ME;
 								newMsg.msgType = MW_TRANSACTION;
 								newMsg.endOfMsg = MW_EOF;
@@ -332,13 +360,13 @@ void * worker_thread ( void * arg ){
 							break;
 						default:
 							//throw out transaction
-								if(removeAll(trans->id) );
-								else
-									debug_out(5, "removeAll (failed %d)\n", tmp->msg.msgId);
-								if(removeTransaction(&transList, trans->id));
-								else
-									debug_out(5, "removeTransaction (failed %d)\n", trans->id);
-								break;
+							if(removeAll(trans->id) );
+							else
+								debug_out(5, "removeAll (failed %d)\n", tmp->msg.msgId);
+							if(removeTransaction(&transList, trans->id));
+							else
+								debug_out(5, "removeTransaction (failed %d)\n", trans->id);
+							break;
 					}
 					break;
 				case MW_COMMIT:
@@ -359,14 +387,14 @@ void * worker_thread ( void * arg ){
 								debug_out(4, "Done with remote transaction\n");
 							//remove transaction since its done
 						}
-							if(removeAll(trans->id))
-								debug_out(5, "Lock removed for %d\n", trans->id);
-							else
-								debug_out(5, "removeAll (failed) (commit %d)\n", tmp->msg.msgId);
-							if(removeTransaction(&transList, trans->id))
-								debug_out(5, "Transaction removed %d\n", tmp->msg.msgId);
-							else
-								debug_out(5, "removeTransaction (failed) (commit)\n", tmp->msg.msgId);
+						if(removeAll(trans->id))
+							debug_out(5, "Lock removed for %d\n", trans->id);
+						else
+							debug_out(5, "removeAll (failed) (commit %d)\n", tmp->msg.msgId);
+						if(removeTransaction(&transList, trans->id))
+							debug_out(5, "Transaction removed %d\n", tmp->msg.msgId);
+						else
+							debug_out(5, "removeTransaction (failed) (commit)\n", tmp->msg.msgId);
 					}
 					else
 						debug_out(5, "commitParse(failed)\n");

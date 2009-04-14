@@ -37,6 +37,7 @@ int commitTransaction(transNode ** list, int id);
 int isTransaction(transNode * list, int id);
 transNode * getTransaction(transNode * list, int id);
 transNode * createTransaction(int id);
+transNode * popTransaction(transNode ** list, int id, int socket);
 
 //functions for handling a varList
 command varListPop(varList ** arg); //TODO used?

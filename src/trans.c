@@ -8,6 +8,32 @@
 #include "lock.h"
 #include <stdio.h>
 
+transNode * popTransaction(transNode ** list, int id, int socket){
+	transNode * current;
+	transNode * prev;
+
+	if((*list) == NULL){
+		debug_out(5, "list empty\n");
+		return FALSE;
+	}
+	else{
+		for(current = (*list), prev = (*list); current != NULL; prev = current, current = current->next){
+			if(current->id == id && current->socket == socket){
+				//match
+			debug_out(5, "transList %d\n", current->id);
+				if(current == (*list))
+					(*list) = current->next;
+				else
+					prev->next = current->next;
+				if((*list) == NULL)
+					debug_out(5, "list should be empty\n");
+				return current;
+			}
+		}
+	}
+	return NULL;
+}
+
 int isTransaction(transNode * list, int id){
 	if(id < 0 || list == NULL)
 		return FALSE;

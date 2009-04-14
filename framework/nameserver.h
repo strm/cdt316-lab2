@@ -14,7 +14,8 @@
   See README file for more details.
  ---------------------------------------------------*/
 
-#define NAMESERVER "ita05973.u2-034.cam-student.mdh.se"
+//#define NAMESERVER "ita05973.u2-034.cam-student.mdh.se"
+#define NAMESERVER "ita05961.u2-034.cam-student.mdh.se"
 
 #endif
 #endif
